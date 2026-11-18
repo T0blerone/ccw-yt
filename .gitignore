@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build & packaging outputs
+dist/
+web-ext-artifacts/
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
