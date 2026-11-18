@@ -12,6 +12,7 @@
     hud,
     feedFilter,
     watchGuard,
+    watchFocus,
   } = CCW;
 
   if (
@@ -22,7 +23,8 @@
     !searchOnly ||
     !hud ||
     !feedFilter ||
-    !watchGuard
+    !watchGuard ||
+    !watchFocus
   ) {
     console.error("[ccw-yt] Missing required content modules.");
     return;
@@ -172,6 +174,7 @@
       hud.update(resolution);
       feedFilter.update(resolution);
       watchGuard.update(resolution);
+      watchFocus.update(resolution);
       entryGate.update(resolution);
     } else {
       if (docEl) {
@@ -182,6 +185,7 @@
       hud.update(resolution);
       feedFilter.update(resolution);
       watchGuard.update(resolution);
+      watchFocus.update(resolution);
       entryGate.update(resolution);
     }
 
@@ -264,6 +268,8 @@
       entryGate.openSettings();
     },
   });
+
+  watchFocus.init();
 
   // Allow Toolbar Popup to open the in-page Settings view inside the current YouTube tab
   ext.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -357,6 +363,10 @@
         !mediaGuard.isAdPlaying(ev.target) &&
         mediaGuard.isMainVideoEnded()
       ) {
+        const vid = tabAllowance.getCurrentVideoId();
+        if (vid) {
+          watchFocus.markVideoFinished(vid);
+        }
         syncUI({ forceVideoEnded: true });
       }
     },

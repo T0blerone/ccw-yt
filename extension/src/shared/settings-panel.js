@@ -278,6 +278,13 @@
     { value: "hidden", label: "Hidden" },
   ];
 
+  /** @type {ReadonlyArray<{ value: CCWWatchElementMode; label: string }>} */
+  const WATCH_ELEMENT_OPTIONS = [
+    { value: "after_video", label: "Reveal after video finishes" },
+    { value: "always", label: "Always show" },
+    { value: "hidden", label: "Always hide" },
+  ];
+
   /**
    * Builds a spinnerless `[ − ] 20 min [ + ]` numeric stepper control.
    *
@@ -735,7 +742,92 @@
       toggleExemptPlaylists.element
     );
 
-    root.append(topRow, header, sessionCard, filterCard);
+    // --- Card 3: Watch Page Focus ---
+    const watchFocusCard = document.createElement("section");
+    watchFocusCard.className = "ccw-settings__card";
+
+    const watchFocusTitle = document.createElement("h2");
+    watchFocusTitle.className = "ccw-settings__section-title";
+    watchFocusTitle.textContent = "Watch Page Focus";
+
+    // Row 1: Watch-page recommendations
+    const rowWatchRecs = document.createElement("div");
+    rowWatchRecs.className = "ccw-settings__row ccw-settings__row--first";
+
+    const watchRecsLabels = document.createElement("div");
+    watchRecsLabels.className = "ccw-settings__label-group";
+
+    const watchRecsLabel = document.createElement("label");
+    watchRecsLabel.className = "ccw-settings__label";
+    watchRecsLabel.htmlFor = "ccw-watch-recs-mode";
+    watchRecsLabel.textContent = "Watch-page recommendations";
+
+    const watchRecsHint = document.createElement("p");
+    watchRecsHint.className = "ccw-settings__hint";
+    watchRecsHint.textContent =
+      "Centers the video while hidden. Revealed items still respect remaining session time.";
+
+    watchRecsLabels.append(watchRecsLabel, watchRecsHint);
+
+    const watchRecsSelect = document.createElement("select");
+    watchRecsSelect.className = "ccw-settings__select";
+    watchRecsSelect.id = "ccw-watch-recs-mode";
+    for (const opt of WATCH_ELEMENT_OPTIONS) {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      watchRecsSelect.appendChild(optionEl);
+    }
+
+    rowWatchRecs.append(watchRecsLabels, watchRecsSelect);
+
+    // Row 2: Comments
+    const rowComments = document.createElement("div");
+    rowComments.className = "ccw-settings__row";
+
+    const commentsLabels = document.createElement("div");
+    commentsLabels.className = "ccw-settings__label-group";
+
+    const commentsLabel = document.createElement("label");
+    commentsLabel.className = "ccw-settings__label";
+    commentsLabel.htmlFor = "ccw-comments-mode";
+    commentsLabel.textContent = "Comments";
+
+    const commentsHint = document.createElement("p");
+    commentsHint.className = "ccw-settings__hint";
+    commentsHint.textContent =
+      "Hide the comment section while watching so you can focus on the video.";
+
+    commentsLabels.append(commentsLabel, commentsHint);
+
+    const commentsSelect = document.createElement("select");
+    commentsSelect.className = "ccw-settings__select";
+    commentsSelect.id = "ccw-comments-mode";
+    for (const opt of WATCH_ELEMENT_OPTIONS) {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      commentsSelect.appendChild(optionEl);
+    }
+
+    rowComments.append(commentsLabels, commentsSelect);
+
+    // Row 3: Show "Show comments" button while watching
+    const toggleEarlyComments = createToggleRow({
+      id: "ccw-early-comments-btn",
+      label: 'Show "Show comments" button while watching',
+      hint: 'Offers a small button below the description when Comments are set to "Reveal after video finishes".',
+      onToggle: (val) => commitPatch({ showEarlyCommentsButton: val }),
+    });
+
+    watchFocusCard.append(
+      watchFocusTitle,
+      rowWatchRecs,
+      rowComments,
+      toggleEarlyComments.element
+    );
+
+    root.append(topRow, header, sessionCard, filterCard, watchFocusCard);
     container.replaceChildren(root);
 
     /**
@@ -744,6 +836,8 @@
     function refresh(settings) {
       landingSelect.value = settings.defaultLanding;
       timerVisSelect.value = settings.timerVisibility;
+      watchRecsSelect.value = settings.watchRecsMode;
+      commentsSelect.value = settings.commentsMode;
       defaultMinsStepper.setValue(settings.defaultMinutes);
       cooldownStepper.setValue(settings.cooldownMinutes);
 
@@ -752,6 +846,9 @@
       toggleExemptSearch.setChecked(settings.exemptSearch);
       toggleExemptChannels.setChecked(settings.exemptChannels);
       toggleExemptPlaylists.setChecked(settings.exemptPlaylistsAndHistory);
+      toggleEarlyComments.setChecked(settings.showEarlyCommentsButton);
+      toggleEarlyComments.element.hidden =
+        settings.commentsMode !== "after_video";
     }
 
     landingSelect.addEventListener("change", () =>
@@ -763,6 +860,18 @@
     timerVisSelect.addEventListener("change", () =>
       commitPatch({
         timerVisibility: /** @type {CCWTimerVisibility} */ (timerVisSelect.value),
+      })
+    );
+
+    watchRecsSelect.addEventListener("change", () =>
+      commitPatch({
+        watchRecsMode: /** @type {CCWWatchElementMode} */ (watchRecsSelect.value),
+      })
+    );
+
+    commentsSelect.addEventListener("change", () =>
+      commitPatch({
+        commentsMode: /** @type {CCWWatchElementMode} */ (commentsSelect.value),
       })
     );
 
