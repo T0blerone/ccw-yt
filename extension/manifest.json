@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "ccw-yt",
+  "version": "0.1.0",
+  "description": "Counter-Clockwise mindful session timer and duration-based feed filter for YouTube.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://www.youtube.com/*",
+    "*://youtube.com/*",
+    "*://m.youtube.com/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{c94e7a12-4b8d-4f31-9e6a-2d5b8f017c3e}",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "background": {
+    "scripts": [
+      "src/background/index.js"
+    ],
+    "type": "module"
+  },
+  "action": {
+    "default_title": "ccw-yt",
+    "default_popup": "src/popup/popup.html"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://m.youtube.com/*"
+      ],
+      "js": [
+        "src/content/redirect-mobile.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://www.youtube.com/*",
+        "*://youtube.com/*"
+      ],
+      "js": [
+        "src/shared/ext.js",
+        "src/content/bootstrap.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

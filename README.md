@@ -12,8 +12,7 @@ Counter-Clockwise mindful session timer and dynamic duration-based feed filter f
 
 - `extension/` — Self-contained WebExtension directory (Manifest V3, Firefox-ready out of the box).
   - `manifest.json` — Firefox MV3 manifest (`strict_min_version: "128.0"`).
-  - `icons/` — Local SVG and PNG icons.
-  - `src/shared/` — Cross-browser API alias (`ext.js`) and shared state/constants.
+  - `src/shared/` — Cross-browser API alias (`ext.js`), Phosphor icon assets, and shared state/constants.
   - `src/background/` — Event-driven MV3 background script.
   - `src/content/` — `document_start` mobile redirect and main YouTube content scripts.
   - `src/popup/` — Toolbar action popup.
