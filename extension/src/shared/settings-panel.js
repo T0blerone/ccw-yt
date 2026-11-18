@@ -827,7 +827,36 @@
       toggleEarlyComments.element
     );
 
-    root.append(topRow, header, sessionCard, filterCard, watchFocusCard);
+    // --- Card 4: Playback ---
+    const playbackCard = document.createElement("section");
+    playbackCard.className = "ccw-settings__card";
+
+    const playbackTitle = document.createElement("h2");
+    playbackTitle.className = "ccw-settings__section-title";
+    playbackTitle.textContent = "Playback";
+
+    const toggleHold2x = createToggleRow({
+      id: "ccw-disable-hold-2x",
+      label: 'Disable "Hold for 2x Speed"',
+      hint: "Blocks holding down the mouse/pointer or Spacebar to jump to 2x speed, while keeping normal pause, scrubbing, and menu speed controls intact.",
+      isFirst: true,
+      onToggle: (val) => commitPatch({ disableHold2x: val }),
+    });
+
+    const toggleLock1x = createToggleRow({
+      id: "ccw-lock-playback-1x",
+      label: "Lock playback speed to 1x",
+      hint: "Keeps all videos strictly at 1x normal speed (overrides player speed menu and Shift + > shortcuts).",
+      onToggle: (val) => commitPatch({ lockPlayback1x: val }),
+    });
+
+    playbackCard.append(
+      playbackTitle,
+      toggleHold2x.element,
+      toggleLock1x.element
+    );
+
+    root.append(topRow, header, sessionCard, filterCard, watchFocusCard, playbackCard);
     container.replaceChildren(root);
 
     /**
@@ -849,6 +878,8 @@
       toggleEarlyComments.setChecked(settings.showEarlyCommentsButton);
       toggleEarlyComments.element.hidden =
         settings.commentsMode !== "after_video";
+      toggleHold2x.setChecked(settings.disableHold2x);
+      toggleLock1x.setChecked(settings.lockPlayback1x);
     }
 
     landingSelect.addEventListener("change", () =>
