@@ -101,6 +101,8 @@ interface CCWSettings {
   watchRecsMode: CCWWatchElementMode;
   commentsMode: CCWWatchElementMode;
   showEarlyCommentsButton: boolean;
+  disableHold2x: boolean;
+  lockPlayback1x: boolean;
 }
 
 interface CCWStateSnapshot {

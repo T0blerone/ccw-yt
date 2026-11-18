@@ -46,6 +46,8 @@
     watchRecsMode: "after_video",
     commentsMode: "after_video",
     showEarlyCommentsButton: true,
+    disableHold2x: true,
+    lockPlayback1x: false,
   });
 
   /**
@@ -169,6 +171,16 @@
         ? src.showEarlyCommentsButton
         : DEFAULT_SETTINGS.showEarlyCommentsButton;
 
+    const disableHold2x =
+      typeof src.disableHold2x === "boolean"
+        ? src.disableHold2x
+        : DEFAULT_SETTINGS.disableHold2x;
+
+    const lockPlayback1x =
+      typeof src.lockPlayback1x === "boolean"
+        ? src.lockPlayback1x
+        : DEFAULT_SETTINGS.lockPlayback1x;
+
     return {
       defaultMinutes,
       cooldownMinutes,
@@ -182,6 +194,8 @@
       watchRecsMode,
       commentsMode,
       showEarlyCommentsButton,
+      disableHold2x,
+      lockPlayback1x,
     };
   }
 
