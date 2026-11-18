@@ -134,9 +134,13 @@
 
     const docEl = document.documentElement;
     if (docEl) {
+      const wasLocked1x = docEl.dataset.ccwLockSpeed1x === "true";
       docEl.dataset.ccwMode = resolution.mode;
       docEl.dataset.ccwBlockHold2x = String(live.settings.disableHold2x);
       docEl.dataset.ccwLockSpeed1x = String(live.settings.lockPlayback1x);
+      if (!wasLocked1x && live.settings.lockPlayback1x) {
+        window.dispatchEvent(new CustomEvent("ccw-enforce-1x"));
+      }
     }
 
     // Whenever an active timed session hits bare `/` and Starting Screen has a non-`/` route,

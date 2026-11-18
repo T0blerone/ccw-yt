@@ -10,7 +10,11 @@
     HTMLMediaElement.prototype,
     "playbackRate"
   );
-  if (!descriptor || typeof descriptor.get !== "function" || typeof descriptor.set !== "function") {
+  if (
+    !descriptor ||
+    typeof descriptor.get !== "function" ||
+    typeof descriptor.set !== "function"
+  ) {
     return;
   }
 
@@ -29,11 +33,13 @@
   let videoSurfacePointerHeld = false;
   let spaceHeld = false;
 
+  /** @type {Set<HTMLElement>} */
+  const temporarilyHiddenPills = new Set();
+
   function isBlockHold2xEnabled() {
     const docEl = document.documentElement;
     if (!docEl) return true;
     const val = docEl.dataset.ccwBlockHold2x;
-    // Default to enabled during the initial ~2ms before isolated-world settings hydrate
     return val === undefined ? true : val === "true";
   }
 
@@ -61,6 +67,55 @@
   }
 
   /**
+   * Hides YouTube's "2x" hold pill inside `#movie_player` (both `.ytp-speedmaster-*`
+   * and newer bezel/pill variants) when a hold gesture is blocked.
+   */
+  function suppressActive2xPill() {
+    const player = document.getElementById("movie_player");
+    if (!player) return;
+
+    for (const el of player.querySelectorAll('[class*="speedmaster"]')) {
+      if (el instanceof HTMLElement) {
+        el.style.setProperty("display", "none", "important");
+      }
+    }
+
+    // Also catch modern bezel/tooltip pills displaying "2x" outside menus/controls
+    for (const node of player.querySelectorAll("*")) {
+      if (!(node instanceof HTMLElement)) continue;
+      if (node.children.length > 0) continue;
+      if (node.closest(EXCLUDED_PLAYER_UI_SELECTOR)) continue;
+
+      const txt = (node.textContent || "").trim();
+      if (/^2x$/i.test(txt) || /^2(\.0)?x\s*»*$/i.test(txt)) {
+        const pill =
+          node.closest(
+            '[class*="speedmaster"], .ytp-bezel-text-wrapper, [class*="overlay"], [class*="pill"]'
+          ) || node.parentElement;
+        if (
+          pill instanceof HTMLElement &&
+          pill !== player &&
+          !pill.classList.contains("html5-video-container")
+        ) {
+          pill.style.setProperty("visibility", "hidden", "important");
+          pill.style.setProperty("opacity", "0", "important");
+          temporarilyHiddenPills.add(pill);
+        }
+      }
+    }
+  }
+
+  function restoreTemporaryPills() {
+    for (const pill of temporarilyHiddenPills) {
+      if (!Array.from(pill.classList).some((c) => c.includes("speedmaster"))) {
+        pill.style.removeProperty("visibility");
+        pill.style.removeProperty("opacity");
+      }
+    }
+    temporarilyHiddenPills.clear();
+  }
+
+  /**
    * @param {Event} ev
    */
   function handlePointerDown(ev) {
@@ -74,7 +129,10 @@
   }
 
   function clearPointerHeld() {
-    videoSurfacePointerHeld = false;
+    if (videoSurfacePointerHeld) {
+      videoSurfacePointerHeld = false;
+      window.setTimeout(restoreTemporaryPills, 60);
+    }
   }
 
   window.addEventListener("pointerdown", handlePointerDown, true);
@@ -127,6 +185,7 @@
     (ev) => {
       if (ev.code === "Space" || ev.key === " ") {
         spaceHeld = false;
+        window.setTimeout(restoreTemporaryPills, 60);
       }
     },
     true
@@ -134,6 +193,7 @@
 
   window.addEventListener("blur", () => {
     spaceHeld = false;
+    restoreTemporaryPills();
   });
 
   Object.defineProperty(HTMLMediaElement.prototype, "playbackRate", {
@@ -146,6 +206,10 @@
       const numeric = Number(value);
 
       if (isLock1xEnabled()) {
+        if ((videoSurfacePointerHeld || spaceHeld) && Math.abs(numeric - 2) < 0.001) {
+          suppressActive2xPill();
+          window.requestAnimationFrame(suppressActive2xPill);
+        }
         origSet.call(this, 1);
         return;
       }
@@ -156,6 +220,8 @@
         Number.isFinite(numeric) &&
         Math.abs(numeric - 2) < 0.001
       ) {
+        suppressActive2xPill();
+        window.requestAnimationFrame(suppressActive2xPill);
         return;
       }
 
@@ -165,18 +231,43 @@
 
   function enforce1xOnExistingMedia() {
     if (!isLock1xEnabled()) return;
+
     for (const media of document.querySelectorAll("video, audio")) {
       if (media instanceof HTMLMediaElement && origGet.call(media) !== 1) {
         origSet.call(media, 1);
       }
     }
+
+    // Also update YouTube's internal player API state so the gear menu reflects "Normal"
+    const player = /** @type {HTMLElement & { setPlaybackRate?: (r: number) => void } | null} */ (
+      document.getElementById("movie_player")
+    );
+    if (player && typeof player.setPlaybackRate === "function") {
+      try {
+        player.setPlaybackRate(1);
+      } catch {
+        // Ignore player API errors if player is mid-initialization
+      }
+    }
   }
 
-  if (document.documentElement) {
+  window.addEventListener("ccw-enforce-1x", enforce1xOnExistingMedia);
+
+  const attachAttrObserver = () => {
+    if (!document.documentElement) return;
     const attrObserver = new MutationObserver(enforce1xOnExistingMedia);
     attrObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-ccw-lock-speed-1x"],
+    });
+    enforce1xOnExistingMedia();
+  };
+
+  if (document.documentElement) {
+    attachAttrObserver();
+  } else {
+    document.addEventListener("DOMContentLoaded", attachAttrObserver, {
+      once: true,
     });
   }
 })();
