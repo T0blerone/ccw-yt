@@ -9,9 +9,17 @@
     mediaGuard,
     entryGate,
     searchOnly,
+    hud,
   } = CCW;
 
-  if (!state || !tabAllowance || !mediaGuard || !entryGate || !searchOnly) {
+  if (
+    !state ||
+    !tabAllowance ||
+    !mediaGuard ||
+    !entryGate ||
+    !searchOnly ||
+    !hud
+  ) {
     console.error("[ccw-yt] Missing required content modules.");
     return;
   }
@@ -22,6 +30,9 @@
   let storageCleanPending = false;
   /** @type {string | null} */
   let redirectingToPath = null;
+
+  /** @type {CCWSingleVideoOrigin | null} */
+  let previousSingleVideoOrigin = null;
 
   mediaGuard.init();
 
@@ -104,6 +115,16 @@
       now,
     });
 
+    const justFinishedOvertime =
+      previousSingleVideoOrigin === "overtime" &&
+      resolution.mode !== "single_video" &&
+      resolution.mode !== "active";
+    previousSingleVideoOrigin = resolution.singleVideoOrigin;
+
+    if (justFinishedOvertime && live.settings.cooldownMinutes > 0) {
+      state.startPostOvertimeCooldown(now).then(applySnapshot);
+    }
+
     const docEl = document.documentElement;
     if (docEl) {
       docEl.dataset.ccwMode = resolution.mode;
@@ -118,6 +139,7 @@
           delete docEl.dataset.ccwReady;
         }
         searchOnly.update(false);
+        hud.update({ ...resolution, mode: "locked" });
         entryGate.update(resolution);
         if (redirectingToPath !== targetPath) {
           redirectingToPath = targetPath;
@@ -142,6 +164,7 @@
         isBareHomeUrl(urlString);
 
       searchOnly.update(showSearchOnly);
+      hud.update(resolution);
       entryGate.update(resolution);
     } else {
       if (docEl) {
@@ -149,6 +172,7 @@
       }
       mediaGuard.setLocked(true);
       searchOnly.update(false);
+      hud.update(resolution);
       entryGate.update(resolution);
     }
 
@@ -187,7 +211,7 @@
     },
 
     onGrantSingleVideo(videoId) {
-      tabAllowance.grantSingleVideo(videoId);
+      tabAllowance.grantSingleVideo(videoId, "direct");
       syncUI();
     },
 
@@ -195,6 +219,18 @@
       if (!open) {
         syncUI();
       }
+    },
+  });
+
+  hud.init({
+    onOpenSettings() {
+      entryGate.openSettings();
+    },
+
+    async onEndSession() {
+      tabAllowance.clearAllowedVideo();
+      const next = await state.endSession({ reason: "manual" });
+      applySnapshot(next);
     },
   });
 
@@ -311,7 +347,9 @@
 
     if (
       latestSnapshot &&
-      (latestSnapshot.session || latestSnapshot.cooldownUntil > 0)
+      (latestSnapshot.session ||
+        latestSnapshot.cooldownUntil > 0 ||
+        Boolean(tabAllowance.getAllowedVideoId()))
     ) {
       syncUI();
     }

@@ -397,6 +397,7 @@
   let wasLockedVisible = false;
   /** @type {string | null} */
   let activeVideoId = null;
+  let isFreshDirectVideo = false;
 
   /**
    * Extracts clean plain-text video title from YouTube's `<title>` without thumbnails.
@@ -769,9 +770,8 @@
     }
 
     cooldownView.hidden = true;
-    const isDirectVideo = Boolean(activeVideoId);
 
-    if (isDirectVideo && !forceTimerOnVideo) {
+    if (isFreshDirectVideo && !forceTimerOnVideo) {
       refreshVideoTitleDisplay();
       videoView.hidden = false;
       timerView.hidden = true;
@@ -781,7 +781,7 @@
       videoView.hidden = true;
       timerView.hidden = false;
       if (switchToSessionBtn) switchToSessionBtn.hidden = true;
-      if (backToVideoBtn) backToVideoBtn.hidden = !isDirectVideo;
+      if (backToVideoBtn) backToVideoBtn.hidden = !isFreshDirectVideo;
     }
   }
 
@@ -859,6 +859,7 @@
 
     const videoChanged = activeVideoId !== resolution.currentVideoId;
     activeVideoId = resolution.currentVideoId;
+    isFreshDirectVideo = resolution.isFreshDirectVideoLink;
 
     if (isGateLocked && !wasLockedVisible) {
       wasLockedVisible = true;

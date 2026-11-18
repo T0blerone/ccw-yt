@@ -26,11 +26,15 @@
     history: "/feed/history",
   });
 
+  /** @type {Readonly<Set<CCWTimerVisibility>>} */
+  const VALID_TIMER_VISIBILITY = new Set(["always", "feeds_only", "hidden"]);
+
   /** @type {Readonly<CCWSettings>} */
   const DEFAULT_SETTINGS = Object.freeze({
     defaultMinutes: 20,
     cooldownMinutes: 0,
     defaultLanding: "home",
+    timerVisibility: "always",
   });
 
   /**
@@ -101,10 +105,20 @@
       defaultLanding = /** @type {CCWLandingTarget} */ (src.defaultLanding);
     }
 
+    /** @type {CCWTimerVisibility} */
+    let timerVisibility = DEFAULT_SETTINGS.timerVisibility;
+    if (
+      typeof src.timerVisibility === "string" &&
+      VALID_TIMER_VISIBILITY.has(/** @type {CCWTimerVisibility} */ (src.timerVisibility))
+    ) {
+      timerVisibility = /** @type {CCWTimerVisibility} */ (src.timerVisibility);
+    }
+
     return {
       defaultMinutes,
       cooldownMinutes,
       defaultLanding,
+      timerVisibility,
     };
   }
 
@@ -143,6 +157,21 @@
       return `${hours}:${pad2(minutes)}:${pad2(seconds)}`;
     }
     return `${minutes}:${pad2(seconds)}`;
+  }
+
+  /**
+   * Calm top-bar time string: whole minutes above 60s (`20m`..`2m`),
+   * switching to `1:00`..`0:01` during the final 60 seconds.
+   *
+   * @param {number} totalSeconds
+   * @returns {string}
+   */
+  function formatCalmDuration(totalSeconds) {
+    const clamped = Math.max(0, Math.floor(totalSeconds));
+    if (clamped > 60) {
+      return `${Math.ceil(clamped / 60)}m`;
+    }
+    return formatDuration(clamped);
   }
 
   /**
@@ -295,6 +324,34 @@
   }
 
   /**
+   * Ensures post-session cooldown starts from `now` when an overtime video finishes
+   * (so overtime playback doesn't consume the user's configured break in the background).
+   *
+   * @param {number} [now]
+   * @returns {Promise<CCWStateSnapshot>}
+   */
+  async function startPostOvertimeCooldown(now = Date.now()) {
+    const raw = await ext.storage.local.get([
+      KEYS.COOLDOWN_UNTIL,
+      KEYS.SETTINGS,
+    ]);
+    const settings = sanitizeSettings(raw[KEYS.SETTINGS]);
+    const existing = parseTimestamp(raw[KEYS.COOLDOWN_UNTIL]);
+
+    if (settings.cooldownMinutes > 0) {
+      const targetEnd = now + settings.cooldownMinutes * 60_000;
+      if (targetEnd > existing) {
+        await ext.storage.local.set({
+          [KEYS.SCHEMA_VERSION]: SCHEMA_VERSION,
+          [KEYS.COOLDOWN_UNTIL]: targetEnd,
+        });
+      }
+    }
+
+    return getState(now);
+  }
+
+  /**
    * Merges and persists partial user settings.
    *
    * @param {Partial<CCWSettings>} partial
@@ -344,9 +401,11 @@
     getState,
     startTimedSession,
     endSession,
+    startPostOvertimeCooldown,
     updateSettings,
     getRemainingSeconds,
     formatDuration,
+    formatCalmDuration,
     getLandingPath,
     subscribe,
   });

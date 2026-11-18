@@ -30,3 +30,10 @@ html[data-ccw-ready="unlocked"][data-ccw-search-only="true"] ytd-browse[page-sub
   max-height: 0 !important;
   overflow: hidden !important;
 }
+
+/* Single-video & overtime grace mode: suppress "Up Next" autoplay countdown overlay */
+html[data-ccw-mode="single_video"] .ytp-autonav-endscreen-countdown-overlay {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

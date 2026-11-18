@@ -58,6 +58,7 @@ type CCWIconName =
   | "arrow-left"
   | "clock-counter-clockwise"
   | "gear"
+  | "lock-simple"
   | "magnifying-glass"
   | "minus"
   | "play"
@@ -81,10 +82,13 @@ type CCWLandingTarget =
   | "library"
   | "history";
 
+type CCWTimerVisibility = "always" | "feeds_only" | "hidden";
+
 interface CCWSettings {
   defaultMinutes: number;
   cooldownMinutes: number;
   defaultLanding: CCWLandingTarget;
+  timerVisibility: CCWTimerVisibility;
 }
 
 interface CCWStateSnapshot {
@@ -110,9 +114,11 @@ interface CCWStateAPI {
   getState(now?: number): Promise<CCWStateSnapshot>;
   startTimedSession(durationSec: number, now?: number): Promise<CCWStartResult>;
   endSession(options?: { reason?: "manual" | "expired" }, now?: number): Promise<CCWStateSnapshot>;
+  startPostOvertimeCooldown(now?: number): Promise<CCWStateSnapshot>;
   updateSettings(partial: Partial<CCWSettings>): Promise<CCWSettings>;
   getRemainingSeconds(session: CCWSession | null, now?: number): number;
   formatDuration(totalSeconds: number): string;
+  formatCalmDuration(totalSeconds: number): string;
   getLandingPath(landing: CCWLandingTarget): string;
   subscribe(listener: (state: CCWStateSnapshot) => void): () => void;
 }
@@ -137,20 +143,23 @@ interface CCWSettingsPanelAPI {
 }
 
 type CCWTabMode = "active" | "single_video" | "cooldown" | "locked";
+type CCWSingleVideoOrigin = "direct" | "overtime";
 
 interface CCWTabResolution {
   mode: CCWTabMode;
   remainingSec: number;
   cooldownRemainingSec: number;
   allowedVideoId: string | null;
+  singleVideoOrigin: CCWSingleVideoOrigin | null;
   currentVideoId: string | null;
+  isFreshDirectVideoLink: boolean;
   state: CCWStateSnapshot;
 }
 
 interface CCWTabAllowanceAPI {
   getCurrentVideoId(urlString?: string): string | null;
   getAllowedVideoId(): string | null;
-  grantSingleVideo(videoId: string): void;
+  grantSingleVideo(videoId: string, origin?: CCWSingleVideoOrigin): void;
   clearAllowedVideo(): void;
   resolveTabState(
     state: CCWStateSnapshot,
@@ -185,6 +194,14 @@ interface CCWSearchOnlyAPI {
   update(active: boolean): void;
 }
 
+interface CCWHudAPI {
+  init(callbacks: {
+    onOpenSettings: () => void;
+    onEndSession: () => Promise<void>;
+  }): void;
+  update(resolution: CCWTabResolution): void;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
@@ -195,6 +212,7 @@ interface CCWNamespace {
   mediaGuard: CCWMediaGuardAPI;
   entryGate: CCWEntryGateAPI;
   searchOnly: CCWSearchOnlyAPI;
+  hud: CCWHudAPI;
 }
 
 declare var CCW: CCWNamespace;

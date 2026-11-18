@@ -1,37 +1,62 @@
 (() => {
-  const SESSION_STORAGE_KEY = "ccw_yt_allowed_video_id";
+  const SESSION_VIDEO_KEY = "ccw_yt_allowed_video_id";
+  const SESSION_ORIGIN_KEY = "ccw_yt_allowed_video_origin";
+
+  /** @type {{ videoId: string | null; origin: CCWSingleVideoOrigin | null }} */
+  const initialStored = readSessionStorage();
 
   /** @type {string | null} */
-  let memoryAllowedVideoId = readSessionStorage();
+  let memoryAllowedVideoId = initialStored.videoId;
+  /** @type {CCWSingleVideoOrigin | null} */
+  let memoryOrigin = initialStored.origin;
 
   /** @type {CCWSession | null} */
   let lastActiveSession = null;
 
   /**
-   * @returns {string | null}
+   * Tracks the video ID most recently watched/unlocked in this tab so locking
+   * at the end of a video shows the normal Entry Gate instead of offering
+   * "Just Watch This Video" again on the video that just finished.
+   *
+   * @type {string | null}
+   */
+  let lastUnlockedVideoId = initialStored.videoId;
+
+  /**
+   * @returns {{ videoId: string | null; origin: CCWSingleVideoOrigin | null }}
    */
   function readSessionStorage() {
     try {
-      const value = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-      return value && value.trim().length > 0 ? value : null;
+      const rawId = window.sessionStorage.getItem(SESSION_VIDEO_KEY);
+      const rawOrigin = window.sessionStorage.getItem(SESSION_ORIGIN_KEY);
+      const videoId = rawId && rawId.trim().length > 0 ? rawId.trim() : null;
+      const origin =
+        rawOrigin === "overtime" || rawOrigin === "direct"
+          ? rawOrigin
+          : videoId
+            ? "direct"
+            : null;
+      return { videoId, origin };
     } catch {
-      return null;
+      return { videoId: null, origin: null };
     }
   }
 
   /**
    * @param {string | null} videoId
+   * @param {CCWSingleVideoOrigin | null} origin
    */
-  function writeSessionStorage(videoId) {
+  function writeSessionStorage(videoId, origin) {
     try {
-      if (videoId) {
-        window.sessionStorage.setItem(SESSION_STORAGE_KEY, videoId);
+      if (videoId && origin) {
+        window.sessionStorage.setItem(SESSION_VIDEO_KEY, videoId);
+        window.sessionStorage.setItem(SESSION_ORIGIN_KEY, origin);
       } else {
-        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+        window.sessionStorage.removeItem(SESSION_VIDEO_KEY);
+        window.sessionStorage.removeItem(SESSION_ORIGIN_KEY);
       }
     } catch {
-      // Ignore storage access errors under strict cookie/storage policies;
-      // `memoryAllowedVideoId` still tracks allowance for the lifetime of the document.
+      // Ignore storage access errors under strict cookie/storage policies
     }
   }
 
@@ -60,16 +85,18 @@
   }
 
   /**
-   * Grants per-tab allowance for a single `/watch?v=...` video
-   * (used by "Just Watch This Video" and natural `0:00` overtime grace).
+   * Grants per-tab allowance for a single `/watch?v=...` video.
    *
    * @param {string} videoId
+   * @param {CCWSingleVideoOrigin} [origin]
    */
-  function grantSingleVideo(videoId) {
+  function grantSingleVideo(videoId, origin = "direct") {
     const trimmed = videoId.trim();
     if (!trimmed) return;
     memoryAllowedVideoId = trimmed;
-    writeSessionStorage(trimmed);
+    memoryOrigin = origin;
+    lastUnlockedVideoId = trimmed;
+    writeSessionStorage(trimmed, origin);
   }
 
   /**
@@ -77,14 +104,12 @@
    */
   function clearAllowedVideo() {
     memoryAllowedVideoId = null;
-    writeSessionStorage(null);
+    memoryOrigin = null;
+    writeSessionStorage(null, null);
   }
 
   /**
    * Resolves the effective lock/session mode for this tab.
-   * Distinguishes natural `0:00` expiration (which grants single-video grace if
-   * currently watching a `/watch?v=` video) from manual "End Session Early"
-   * (which locks immediately without grace).
    *
    * @param {CCWStateSnapshot} state
    * @param {{
@@ -100,9 +125,11 @@
     const currentVideoId = getCurrentVideoId(options.urlString);
     const isEnded = Boolean(options.isCurrentVideoEnded);
 
-    // Active global timed session supersedes any prior single-video allowance.
     if (state.session && state.remainingSec > 0) {
       lastActiveSession = state.session;
+      if (currentVideoId) {
+        lastUnlockedVideoId = currentVideoId;
+      }
       if (memoryAllowedVideoId) {
         clearAllowedVideo();
       }
@@ -111,38 +138,49 @@
         remainingSec: state.remainingSec,
         cooldownRemainingSec: 0,
         allowedVideoId: null,
+        singleVideoOrigin: null,
         currentVideoId,
+        isFreshDirectVideoLink: false,
         state,
       };
     }
 
-    // Transition out of an active timed session in this tab:
     if (lastActiveSession) {
       const expiredNaturally = now >= lastActiveSession.endsAt;
       lastActiveSession = null;
 
       if (expiredNaturally && currentVideoId && !isEnded) {
-        grantSingleVideo(currentVideoId);
+        grantSingleVideo(currentVideoId, "overtime");
       } else {
         clearAllowedVideo();
       }
     }
 
-    // Validate any existing single-video allowance against current URL & playback state:
     if (memoryAllowedVideoId) {
       if (currentVideoId === memoryAllowedVideoId && !isEnded) {
+        lastUnlockedVideoId = currentVideoId;
         return {
           mode: "single_video",
           remainingSec: 0,
           cooldownRemainingSec: state.cooldownRemainingSec,
           allowedVideoId: memoryAllowedVideoId,
+          singleVideoOrigin: memoryOrigin ?? "direct",
           currentVideoId,
+          isFreshDirectVideoLink: false,
           state,
         };
       }
-      // Navigated away from the allowed video or playback finished -> revoke immediately.
       clearAllowedVideo();
     }
+
+    // Clear `lastUnlockedVideoId` if the user navigates off `/watch` so visiting that
+    // video URL fresh later is treated as a fresh incoming link again.
+    if (!currentVideoId) {
+      lastUnlockedVideoId = null;
+    }
+
+    const isFreshDirectVideoLink =
+      Boolean(currentVideoId) && currentVideoId !== lastUnlockedVideoId;
 
     if (state.cooldownRemainingSec > 0) {
       return {
@@ -150,7 +188,9 @@
         remainingSec: 0,
         cooldownRemainingSec: state.cooldownRemainingSec,
         allowedVideoId: null,
+        singleVideoOrigin: null,
         currentVideoId,
+        isFreshDirectVideoLink,
         state,
       };
     }
@@ -160,7 +200,9 @@
       remainingSec: 0,
       cooldownRemainingSec: 0,
       allowedVideoId: null,
+      singleVideoOrigin: null,
       currentVideoId,
+      isFreshDirectVideoLink,
       state,
     };
   }
