@@ -32,6 +32,14 @@
   /** @type {Readonly<Set<CCWWatchElementMode>>} */
   const VALID_WATCH_ELEMENT_MODES = new Set(["always", "after_video", "hidden"]);
 
+  /** @type {Readonly<Set<CCWThumbnailMode>>} */
+  const VALID_THUMBNAIL_MODES = new Set([
+    "normal",
+    "no_hover_preview",
+    "blur",
+    "hidden",
+  ]);
+
   /** @type {Readonly<CCWSettings>} */
   const DEFAULT_SETTINGS = Object.freeze({
     defaultMinutes: 20,
@@ -48,6 +56,15 @@
     showEarlyCommentsButton: true,
     disableHold2x: true,
     lockPlayback1x: false,
+    hideShorts: true,
+    thumbnailMode: "normal",
+    disableAutoplayNext: true,
+    hideEndScreenCards: false,
+    hideExploreSidebar: true,
+    hideNotificationBell: false,
+    hideCommunityPosts: false,
+    hideMerchAndPlayables: true,
+    hideLiveChat: false,
   });
 
   /**
@@ -181,6 +198,55 @@
         ? src.lockPlayback1x
         : DEFAULT_SETTINGS.lockPlayback1x;
 
+    const hideShorts =
+      typeof src.hideShorts === "boolean"
+        ? src.hideShorts
+        : DEFAULT_SETTINGS.hideShorts;
+
+    /** @type {CCWThumbnailMode} */
+    let thumbnailMode = DEFAULT_SETTINGS.thumbnailMode;
+    if (
+      typeof src.thumbnailMode === "string" &&
+      VALID_THUMBNAIL_MODES.has(/** @type {CCWThumbnailMode} */ (src.thumbnailMode))
+    ) {
+      thumbnailMode = /** @type {CCWThumbnailMode} */ (src.thumbnailMode);
+    }
+
+    const disableAutoplayNext =
+      typeof src.disableAutoplayNext === "boolean"
+        ? src.disableAutoplayNext
+        : DEFAULT_SETTINGS.disableAutoplayNext;
+
+    const hideEndScreenCards =
+      typeof src.hideEndScreenCards === "boolean"
+        ? src.hideEndScreenCards
+        : DEFAULT_SETTINGS.hideEndScreenCards;
+
+    const hideExploreSidebar =
+      typeof src.hideExploreSidebar === "boolean"
+        ? src.hideExploreSidebar
+        : DEFAULT_SETTINGS.hideExploreSidebar;
+
+    const hideNotificationBell =
+      typeof src.hideNotificationBell === "boolean"
+        ? src.hideNotificationBell
+        : DEFAULT_SETTINGS.hideNotificationBell;
+
+    const hideCommunityPosts =
+      typeof src.hideCommunityPosts === "boolean"
+        ? src.hideCommunityPosts
+        : DEFAULT_SETTINGS.hideCommunityPosts;
+
+    const hideMerchAndPlayables =
+      typeof src.hideMerchAndPlayables === "boolean"
+        ? src.hideMerchAndPlayables
+        : DEFAULT_SETTINGS.hideMerchAndPlayables;
+
+    const hideLiveChat =
+      typeof src.hideLiveChat === "boolean"
+        ? src.hideLiveChat
+        : DEFAULT_SETTINGS.hideLiveChat;
+
     return {
       defaultMinutes,
       cooldownMinutes,
@@ -196,6 +262,15 @@
       showEarlyCommentsButton,
       disableHold2x,
       lockPlayback1x,
+      hideShorts,
+      thumbnailMode,
+      disableAutoplayNext,
+      hideEndScreenCards,
+      hideExploreSidebar,
+      hideNotificationBell,
+      hideCommunityPosts,
+      hideMerchAndPlayables,
+      hideLiveChat,
     };
   }
 
@@ -448,6 +523,20 @@
   }
 
   /**
+   * Restores all user settings to their fresh-install defaults.
+   *
+   * @returns {Promise<CCWSettings>}
+   */
+  async function resetSettings() {
+    const fresh = sanitizeSettings(DEFAULT_SETTINGS);
+    await ext.storage.local.set({
+      [KEYS.SCHEMA_VERSION]: SCHEMA_VERSION,
+      [KEYS.SETTINGS]: fresh,
+    });
+    return fresh;
+  }
+
+  /**
    * Subscribes to `storage.local` updates across tabs/contexts.
    *
    * @param {(state: CCWStateSnapshot) => void} listener
@@ -480,6 +569,7 @@
     endSession,
     startPostOvertimeCooldown,
     updateSettings,
+    resetSettings,
     getRemainingSeconds,
     formatDuration,
     formatCalmDuration,

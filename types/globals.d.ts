@@ -87,6 +87,7 @@ type CCWLandingTarget =
 
 type CCWTimerVisibility = "always" | "feeds_only" | "hidden";
 type CCWWatchElementMode = "always" | "after_video" | "hidden";
+type CCWThumbnailMode = "normal" | "no_hover_preview" | "blur" | "hidden";
 
 interface CCWSettings {
   defaultMinutes: number;
@@ -103,6 +104,15 @@ interface CCWSettings {
   showEarlyCommentsButton: boolean;
   disableHold2x: boolean;
   lockPlayback1x: boolean;
+  hideShorts: boolean;
+  thumbnailMode: CCWThumbnailMode;
+  disableAutoplayNext: boolean;
+  hideEndScreenCards: boolean;
+  hideExploreSidebar: boolean;
+  hideNotificationBell: boolean;
+  hideCommunityPosts: boolean;
+  hideMerchAndPlayables: boolean;
+  hideLiveChat: boolean;
 }
 
 interface CCWStateSnapshot {
@@ -130,6 +140,7 @@ interface CCWStateAPI {
   endSession(options?: { reason?: "manual" | "expired" }, now?: number): Promise<CCWStateSnapshot>;
   startPostOvertimeCooldown(now?: number): Promise<CCWStateSnapshot>;
   updateSettings(partial: Partial<CCWSettings>): Promise<CCWSettings>;
+  resetSettings(): Promise<CCWSettings>;
   getRemainingSeconds(session: CCWSession | null, now?: number): number;
   formatDuration(totalSeconds: number): string;
   formatCalmDuration(totalSeconds: number): string;
@@ -239,6 +250,11 @@ interface CCWWatchFocusAPI {
   markVideoFinished(videoId: string): void;
 }
 
+interface CCWDistractionsAPI {
+  init(): void;
+  update(settings: CCWSettings, urlOverride?: string): boolean;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
@@ -253,6 +269,7 @@ interface CCWNamespace {
   feedFilter: CCWFeedFilterAPI;
   watchGuard: CCWWatchGuardAPI;
   watchFocus: CCWWatchFocusAPI;
+  distractions?: CCWDistractionsAPI;
 }
 
 declare var CCW: CCWNamespace;
