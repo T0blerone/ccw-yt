@@ -25,13 +25,22 @@
     "ytd-rich-shelf-renderer, ytd-reel-shelf-renderer, ytd-shelf-renderer";
 
   const BADGE_TEXT_SELECTOR = [
+    ".badge-shape-wiz__text",
+    ".yt-badge-shape__text",
+    '[class*="badge-shape"][class*="text"]',
+    "badge-shape",
     "ytd-thumbnail-overlay-time-status-renderer #text",
     "span.ytd-thumbnail-overlay-time-status-renderer",
-    "yt-thumbnail-badge-view-model .yt-badge-shape__text",
-    "badge-shape .yt-badge-shape__text",
+    '[class*="time-status"]',
     ".ytp-videowall-still-info-duration",
     ".ytp-ce-video-duration",
   ].join(", ");
+
+  const THUMBNAIL_CONTAINER_SELECTOR =
+    'yt-thumbnail-view-model, ytd-thumbnail, a#thumbnail, [class*="content-image"]';
+
+  const INACTIVE_PAGE_SELECTOR =
+    "ytd-browse[hidden], ytd-search[hidden], ytd-watch-flexy[hidden]";
 
   const FOOTER_HOST_ID = "ccw-yt-filter-footer";
 
@@ -138,7 +147,8 @@
     }
   `;
 
-  const TIMESTAMP_RE = /^(?:(\d+):)?([0-5]?\d):([0-5]\d)$/;
+  const TIMESTAMP_RE = /^(?:(?:(\d+):)?(\d+):)?([0-5]?\d):([0-5]\d)$/;
+  const INVISIBLE_CHARS_RE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
 
   /** @type {WeakSet<Element>} */
   const hoverDeferredListeners = new WeakSet();
@@ -173,13 +183,14 @@
    * @returns {number | null}
    */
   function parseTimestampText(raw) {
-    const cleaned = raw.trim();
+    const cleaned = raw.replace(INVISIBLE_CHARS_RE, "").trim();
     const match = TIMESTAMP_RE.exec(cleaned);
     if (!match) return null;
-    const hours = match[1] ? Number(match[1]) : 0;
-    const minutes = Number(match[2]);
-    const seconds = Number(match[3]);
-    return hours * 3600 + minutes * 60 + seconds;
+    const days = match[1] ? Number(match[1]) : 0;
+    const hours = match[2] ? Number(match[2]) : 0;
+    const minutes = Number(match[3]);
+    const seconds = Number(match[4]);
+    return days * 86400 + hours * 3600 + minutes * 60 + seconds;
   }
 
   /**
@@ -216,9 +227,45 @@
       tag === "YTM-SHORTS-LOCKUP-VIEW-MODEL-V2" ||
       tag === "YTD-REEL-ITEM-RENDERER"
     ) {
-      return Boolean(el.parentElement?.closest("ytd-rich-item-renderer"));
+      return Boolean(
+        el.parentElement?.closest(
+          "ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer, ytd-playlist-video-renderer"
+        )
+      );
     }
     return false;
+  }
+
+  /**
+   * Inspects a single badge/overlay text string for duration or stream status.
+   *
+   * @param {string} rawText
+   * @returns {
+   *   | { kind: "video"; durationSec: number }
+   *   | { kind: "live" }
+   *   | { kind: "upcoming" }
+   *   | { kind: "mix" }
+   *   | null
+   * }
+   */
+  function matchBadgeLabel(rawText) {
+    const text = rawText.replace(INVISIBLE_CHARS_RE, "").trim();
+    if (!text || text.length > 28) return null;
+
+    const parsedSec = parseTimestampText(text);
+    if (parsedSec !== null) {
+      return { kind: "video", durationSec: parsedSec };
+    }
+    if (/^(live|live now|premiering now)$/i.test(text)) {
+      return { kind: "live" };
+    }
+    if (/^(upcoming|premiere)$/i.test(text)) {
+      return { kind: "upcoming" };
+    }
+    if (/^(mix|\d+\s*(videos?|episodes?|podcasts?|lessons?|courses?))$/i.test(text)) {
+      return { kind: "mix" };
+    }
+    return null;
   }
 
   /**
@@ -245,7 +292,9 @@
       tag === "YTD-PLAYLIST-RENDERER" ||
       tag === "YTD-COMPACT-PLAYLIST-RENDERER" ||
       card.classList.contains("ytp-ce-playlist") ||
-      card.querySelector(".yt-lockup-view-model--collection-stack-2, yt-collections-stack")
+      card.querySelector(
+        '[class*="collection-stack"], yt-collections-stack'
+      )
     ) {
       return { kind: "mix" };
     }
@@ -291,34 +340,36 @@
       return { kind: "upcoming" };
     }
 
-    // 5. Inspect thumbnail / overlay badge text
-    const badgeNodes = card.querySelectorAll(BADGE_TEXT_SELECTOR);
-    for (const badge of badgeNodes) {
-      const text = (badge.textContent || "").trim();
-      if (!text) continue;
+    // 5. Inspect thumbnail / overlay badge text (both Polymer and Wiz badge classes)
+    /** @type {{ kind: "live" | "upcoming" | "mix" } | null} */
+    let statusMatch = null;
+    for (const badge of card.querySelectorAll(BADGE_TEXT_SELECTOR)) {
+      const res = matchBadgeLabel(badge.textContent || "");
+      if (!res) continue;
+      if (res.kind === "video") return res;
+      if (!statusMatch) statusMatch = res;
+    }
 
-      const parsedSec = parseTimestampText(text);
-      if (parsedSec !== null) {
-        return { kind: "video", durationSec: parsedSec };
-      }
-
-      if (/^(live|live now|premiering now)$/i.test(text)) {
-        return { kind: "live" };
-      }
-      if (/^(upcoming|premiere)$/i.test(text)) {
-        return { kind: "upcoming" };
-      }
-      if (/^(mix|\d+\s*(videos?|episodes?|podcasts?))$/i.test(text)) {
-        return { kind: "mix" };
+    // 6. Class-agnostic leaf scan inside thumbnail container (immune to Wiz class renames)
+    const thumbRoot = card.querySelector(THUMBNAIL_CONTAINER_SELECTOR);
+    if (thumbRoot) {
+      for (const node of thumbRoot.querySelectorAll("*")) {
+        if (node.children.length > 0) continue;
+        const res = matchBadgeLabel(node.textContent || "");
+        if (!res) continue;
+        if (res.kind === "video") return res;
+        if (!statusMatch) statusMatch = res;
       }
     }
 
-    // 6. Fallback to title/thumbnail `aria-label` when overlay badge hasn't hydrated yet
-    const ariaLink = card.querySelector(
-      "a#video-title[aria-label], a.yt-lockup-metadata-view-model__title[aria-label], a#thumbnail[aria-label]"
-    );
-    if (ariaLink) {
-      const label = ariaLink.getAttribute("aria-label") || "";
+    if (statusMatch) {
+      return statusMatch;
+    }
+
+    // 7. Fallback to any `[aria-label]` inside the card (catches `a#video-title-link`, Wiz titles, etc.)
+    for (const labeled of card.querySelectorAll("a[aria-label], h3[aria-label], span[aria-label]")) {
+      const label = labeled.getAttribute("aria-label") || "";
+      if (!label) continue;
       const ariaSec = parseAriaDuration(label);
       if (ariaSec !== null) {
         return { kind: "video", durationSec: ariaSec };
@@ -406,6 +457,24 @@
   }
 
   /**
+   * @param {Element} el
+   * @param {boolean} filtered
+   */
+  function setElementFiltered(el, filtered) {
+    if (filtered) {
+      el.setAttribute("data-ccw-filtered", "true");
+      if (el instanceof HTMLElement) {
+        el.style.setProperty("display", "none", "important");
+      }
+    } else {
+      el.removeAttribute("data-ccw-filtered");
+      if (el instanceof HTMLElement) {
+        el.style.removeProperty("display");
+      }
+    }
+  }
+
+  /**
    * @param {Element} card
    * @param {boolean} hide
    */
@@ -414,7 +483,7 @@
 
     if (!hide) {
       if (alreadyFiltered) {
-        card.removeAttribute("data-ccw-filtered");
+        setElementFiltered(card, false);
       }
       card.removeAttribute("data-ccw-defer-hide");
       return;
@@ -435,12 +504,12 @@
     }
 
     card.removeAttribute("data-ccw-defer-hide");
-    card.setAttribute("data-ccw-filtered", "true");
+    setElementFiltered(card, true);
   }
 
   function clearAllFiltering() {
     for (const el of document.querySelectorAll("[data-ccw-filtered]")) {
-      el.removeAttribute("data-ccw-filtered");
+      setElementFiltered(el, false);
     }
     for (const el of document.querySelectorAll("[data-ccw-pause-continuation]")) {
       el.removeAttribute("data-ccw-pause-continuation");
@@ -653,8 +722,8 @@
 
     for (const card of candidates) {
       if (isNestedInsideOuterCard(card)) continue;
-      // Ignore elements inside hidden inactive Polymer `<ytd-browse hidden>` pages
-      if (card.closest("[hidden]")) continue;
+      // Ignore elements inside cached inactive YouTube SPA route views
+      if (card.closest(INACTIVE_PAGE_SELECTOR)) continue;
 
       const info = classifyCard(card);
       if (info.kind === "pending") continue;
@@ -673,7 +742,7 @@
 
     // Hide shelves whose evaluated cards were all filtered out
     for (const shelf of document.querySelectorAll(SHELF_SELECTOR)) {
-      if (shelf.closest("[hidden]")) continue;
+      if (shelf.closest(INACTIVE_PAGE_SELECTOR)) continue;
       const shelfCards = shelf.querySelectorAll(CARD_SELECTOR);
       if (shelfCards.length === 0) continue;
 
@@ -689,9 +758,9 @@
       }
 
       if (anyEvaluated && !anyVisible) {
-        shelf.setAttribute("data-ccw-filtered", "true");
-      } else {
-        shelf.removeAttribute("data-ccw-filtered");
+        setElementFiltered(shelf, true);
+      } else if (shelf.getAttribute("data-ccw-filtered") === "true") {
+        setElementFiltered(shelf, false);
       }
     }
 
@@ -724,16 +793,12 @@
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", syncFooterTheme);
 
-    const attachBodyObserver = () => {
-      const target = document.body || document.documentElement;
+    const attachObserver = () => {
+      const target = document.documentElement;
       if (!target) return;
       const observer = new MutationObserver((mutations) => {
         for (const m of mutations) {
-          // Ignore mutations caused by our own footer host
-          if (
-            m.target instanceof Element &&
-            m.target.id === FOOTER_HOST_ID
-          ) {
+          if (m.target instanceof Element && m.target.id === FOOTER_HOST_ID) {
             continue;
           }
           scheduleFilterPass();
@@ -744,16 +809,12 @@
         childList: true,
         subtree: true,
         characterData: true,
+        attributes: true,
+        attributeFilter: ["aria-label", "href", "overlay-style"],
       });
     };
 
-    if (document.body) {
-      attachBodyObserver();
-    } else {
-      document.addEventListener("DOMContentLoaded", attachBodyObserver, {
-        once: true,
-      });
-    }
+    attachObserver();
   }
 
   /**

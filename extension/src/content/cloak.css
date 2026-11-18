@@ -39,11 +39,17 @@ html[data-ccw-mode="single_video"] .ytp-autonav-endscreen-countdown-overlay {
 }
 
 /* Duration-filtered video cards and empty shelves */
-[data-ccw-filtered="true"] {
+html body [data-ccw-filtered="true"] {
   display: none !important;
 }
 
+/* Unwrap YouTube's fixed 3-item row wrappers so remaining visible cards reflow without gaps */
+html[data-ccw-ready="unlocked"] ytd-rich-grid-row,
+html[data-ccw-ready="unlocked"] #contents.ytd-rich-grid-row {
+  display: contents !important;
+}
+
 /* Paused infinite-scroll continuation loader when a filtered feed is sparse */
-ytd-continuation-item-renderer[data-ccw-pause-continuation="true"] {
+html body ytd-continuation-item-renderer[data-ccw-pause-continuation="true"] {
   display: none !important;
 }
