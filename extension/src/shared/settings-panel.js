@@ -768,7 +768,7 @@
     const toggleBlockOverBudget = createToggleRow({
       id: "ccw-block-over-budget",
       label: "Block opening videos longer than remaining time",
-      hint: "Pauses playback and shows a calm notice if you open a link to a video that won't fit in your remaining session budget.",
+      hint: "Pauses playback and shows a notice if you open a link to a video that won't fit in your remaining session budget.",
       isFirst: true,
       onToggle: (val) => commitPatch({ blockOverBudgetWatch: val }),
     });
@@ -835,7 +835,7 @@
     const toggleEarlyComments = createToggleRow({
       id: "ccw-early-comments-btn",
       label: 'Show "Show comments" button while watching',
-      hint: 'Offers a small button below the description when Comments are set to "Reveal after video finishes".',
+      hint: 'Offers a small button below the description when Comments are set to "Reveal after video finishes", offering to reveal them early.',
       onToggle: (val) => commitPatch({ showEarlyCommentsButton: val }),
     });
 
