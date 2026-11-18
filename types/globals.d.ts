@@ -250,7 +250,7 @@ interface CCWNamespace {
   hud: CCWHudAPI;
   feedFilter: CCWFeedFilterAPI;
   watchGuard: CCWWatchGuardAPI;
-  watchFocus?: CCWWatchFocusAPI;
+  watchFocus: CCWWatchFocusAPI;
 }
 
 declare var CCW: CCWNamespace;
