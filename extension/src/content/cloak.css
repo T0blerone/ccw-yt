@@ -37,3 +37,13 @@ html[data-ccw-mode="single_video"] .ytp-autonav-endscreen-countdown-overlay {
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* Duration-filtered video cards and empty shelves */
+[data-ccw-filtered="true"] {
+  display: none !important;
+}
+
+/* Paused infinite-scroll continuation loader when a filtered feed is sparse */
+ytd-continuation-item-renderer[data-ccw-pause-continuation="true"] {
+  display: none !important;
+}
