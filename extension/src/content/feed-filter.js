@@ -467,8 +467,9 @@
     const budgetSec = resolution.remainingSec;
 
     switch (info.kind) {
-      case "video":
       case "short":
+        return settings.hideShorts || info.durationSec > budgetSec;
+      case "video":
         return info.durationSec > budgetSec;
       case "live":
         return !settings.allowLiveStreams || budgetSec <= 0;

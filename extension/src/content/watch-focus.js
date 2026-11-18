@@ -105,11 +105,13 @@
       return true;
     }
 
-    const liveChat = document.querySelector(
-      "ytd-watch-flexy #secondary ytd-live-chat-frame:not([hidden]):not([collapsed])"
-    );
-    if (liveChat && liveChat.children.length > 0) {
-      return true;
+    if (!latestResolution?.state.settings.hideLiveChat) {
+      const liveChat = document.querySelector(
+        "ytd-watch-flexy #secondary ytd-live-chat-frame:not([hidden]):not([collapsed])"
+      );
+      if (liveChat && liveChat.children.length > 0) {
+        return true;
+      }
     }
 
     return false;

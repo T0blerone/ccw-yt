@@ -119,3 +119,133 @@ html[data-ccw-lock-speed-1x="true"] [class*="speedmaster"] {
   visibility: hidden !important;
   opacity: 0 !important;
 }
+
+/* --- Step 8: Configurable Distraction Controls --- */
+
+/* 1. Hide Shorts across shelves, cards, channel tabs, chips, and left guide */
+html[data-ccw-hide-shorts="true"] ytd-reel-shelf-renderer,
+html[data-ccw-hide-shorts="true"] ytd-rich-shelf-renderer[is-shorts],
+html[data-ccw-hide-shorts="true"] ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+html[data-ccw-hide-shorts="true"] grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2),
+html[data-ccw-hide-shorts="true"] ytd-reel-item-renderer,
+html[data-ccw-hide-shorts="true"] ytm-shorts-lockup-view-model,
+html[data-ccw-hide-shorts="true"] ytm-shorts-lockup-view-model-v2,
+html[data-ccw-hide-shorts="true"] ytd-rich-item-renderer:has(a[href*="/shorts/"]),
+html[data-ccw-hide-shorts="true"] ytd-video-renderer:has(a[href*="/shorts/"]),
+html[data-ccw-hide-shorts="true"] ytd-grid-video-renderer:has(a[href*="/shorts/"]),
+html[data-ccw-hide-shorts="true"] yt-lockup-view-model:has(a[href*="/shorts/"]),
+html[data-ccw-hide-shorts="true"] ytd-guide-entry-renderer:has(a[title="Shorts"]),
+html[data-ccw-hide-shorts="true"] ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+html[data-ccw-hide-shorts="true"] ytd-mini-guide-entry-renderer:has(a[title="Shorts"]),
+html[data-ccw-hide-shorts="true"] yt-tab-shape[tab-title="Shorts"],
+html[data-ccw-hide-shorts="true"] yt-chip-cloud-chip-renderer:has(yt-formatted-string[title="Shorts"]) {
+  display: none !important;
+}
+
+/* 2. Thumbnail Modes: disable hover video previews in `no_hover_preview`, `blur`, and `hidden` */
+html[data-ccw-thumbnails="no_hover_preview"] ytd-video-preview,
+html[data-ccw-thumbnails="no_hover_preview"] #video-preview,
+html[data-ccw-thumbnails="no_hover_preview"] #mouseover-overlay,
+html[data-ccw-thumbnails="no_hover_preview"] ytd-moving-thumbnail-renderer,
+html[data-ccw-thumbnails="blur"] ytd-video-preview,
+html[data-ccw-thumbnails="blur"] #video-preview,
+html[data-ccw-thumbnails="blur"] #mouseover-overlay,
+html[data-ccw-thumbnails="blur"] ytd-moving-thumbnail-renderer,
+html[data-ccw-thumbnails="hidden"] ytd-video-preview,
+html[data-ccw-thumbnails="hidden"] #video-preview,
+html[data-ccw-thumbnails="hidden"] #mouseover-overlay,
+html[data-ccw-thumbnails="hidden"] ytd-moving-thumbnail-renderer {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+html[data-ccw-thumbnails="blur"] ytd-thumbnail #thumbnail,
+html[data-ccw-thumbnails="blur"] yt-thumbnail-view-model {
+  overflow: hidden !important;
+}
+
+html[data-ccw-thumbnails="blur"] ytd-thumbnail img,
+html[data-ccw-thumbnails="blur"] yt-thumbnail-view-model img,
+html[data-ccw-thumbnails="blur"] .ytp-ce-covering-image {
+  filter: blur(14px) !important;
+  transform: scale(1.08) !important;
+}
+
+html[data-ccw-thumbnails="blur"] .ytp-videowall-still-image,
+html[data-ccw-thumbnails="blur"] .ytp-modern-videowall-still-image {
+  filter: blur(14px) !important;
+}
+
+html[data-ccw-thumbnails="hidden"] ytd-thumbnail img,
+html[data-ccw-thumbnails="hidden"] yt-thumbnail-view-model img,
+html[data-ccw-thumbnails="hidden"] .ytp-ce-covering-image,
+html[data-ccw-thumbnails="hidden"] .ytp-videowall-still-image,
+html[data-ccw-thumbnails="hidden"] .ytp-modern-videowall-still-image {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+html[data-ccw-thumbnails="hidden"] ytd-thumbnail #thumbnail,
+html[data-ccw-thumbnails="hidden"] yt-thumbnail-view-model {
+  background: rgba(128, 134, 145, 0.14) !important;
+  border-radius: 10px !important;
+}
+
+/* 3. Disable Autoplay Next countdown overlay */
+html[data-ccw-disable-autoplay="true"] .ytp-autonav-endscreen-countdown-overlay {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 4. Hide In-Player End-Screen Cards & Post-Video Wall */
+html[data-ccw-hide-endscreens="true"] #movie_player .ytp-ce-element,
+html[data-ccw-hide-endscreens="true"] #movie_player .ytp-ce-covering-overlay,
+html[data-ccw-hide-endscreens="true"] #movie_player .ytp-endscreen-content,
+html[data-ccw-hide-endscreens="true"] #movie_player .html5-endscreen {
+  display: none !important;
+}
+
+/* 5. Clean up Left Sidebar clutter (Explore & More from YouTube) */
+html[data-ccw-clean-sidebar="true"] ytd-guide-section-renderer:has(
+  a[href*="/feed/trending"],
+  a[href*="/feed/storefront"],
+  a[href*="/gaming"],
+  a[href*="/podcasts"],
+  a[href*="/playables"],
+  a[href*="youtubekids.com"],
+  a[href*="/premium"]
+) {
+  display: none !important;
+}
+
+/* 6. Hide Top-Bar Notification Bell */
+html[data-ccw-hide-bell="true"] ytd-notification-topbar-button-renderer {
+  display: none !important;
+}
+
+/* 7. Hide Community Posts */
+html[data-ccw-hide-posts="true"] ytd-post-renderer,
+html[data-ccw-hide-posts="true"] ytd-backstage-post-thread-renderer,
+html[data-ccw-hide-posts="true"] ytd-rich-item-renderer:has(ytd-post-renderer, ytd-backstage-post-thread-renderer),
+html[data-ccw-hide-posts="true"] ytd-rich-section-renderer:has(ytd-post-renderer, ytd-backstage-post-thread-renderer) {
+  display: none !important;
+}
+
+/* 8. Hide Playables, Merch, Ticket & Promo Shelves */
+html[data-ccw-hide-merch="true"] ytd-merch-shelf-renderer,
+html[data-ccw-hide-merch="true"] ytd-ticket-shelf-renderer,
+html[data-ccw-hide-merch="true"] #ticket-shelf,
+html[data-ccw-hide-merch="true"] yt-pdg-buy-flow-renderer,
+html[data-ccw-hide-merch="true"] ytd-statement-banner-renderer,
+html[data-ccw-hide-merch="true"] ytd-banner-promo-renderer,
+html[data-ccw-hide-merch="true"] ytd-rich-section-renderer:has(a[href*="/playables"]),
+html[data-ccw-hide-merch="true"] ytd-rich-shelf-renderer:has(a[href*="/playables"]) {
+  display: none !important;
+}
+
+/* 9. Hide Live Chat */
+html[data-ccw-hide-live-chat="true"] ytd-live-chat-frame,
+html[data-ccw-hide-live-chat="true"] #chat-container {
+  display: none !important;
+}

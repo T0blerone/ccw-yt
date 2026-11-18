@@ -4,7 +4,7 @@
   const STYLES = `
     .ccw-settings {
       width: 100%;
-      max-width: 640px;
+      max-width: 660px;
       display: flex;
       flex-direction: column;
       gap: 18px;
@@ -69,6 +69,49 @@
       color: var(--muted);
     }
 
+    .ccw-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--input-bg, var(--bg));
+    }
+
+    .ccw-tabs__btn {
+      appearance: none;
+      flex: 1 1 auto;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      text-align: center;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease;
+    }
+
+    .ccw-tabs__btn:hover {
+      color: var(--fg);
+    }
+
+    .ccw-tabs__btn[aria-selected="true"] {
+      background: var(--surface);
+      color: var(--fg);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .ccw-tabs__btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
     .ccw-settings__card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -79,13 +122,8 @@
       gap: 18px;
     }
 
-    .ccw-settings__section-title {
-      margin: 0;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
+    .ccw-settings__card[hidden] {
+      display: none !important;
     }
 
     .ccw-settings__row {
@@ -100,6 +138,10 @@
     .ccw-settings__row--first {
       padding-top: 2px;
       border-top: none;
+    }
+
+    .ccw-settings__row[hidden] {
+      display: none !important;
     }
 
     .ccw-settings__label-group {
@@ -126,7 +168,7 @@
       border: 1px solid var(--border);
       border-radius: 9px;
       padding: 8px 12px;
-      min-width: 215px;
+      min-width: 220px;
       background: var(--input-bg, var(--bg));
       color: var(--fg);
       font-family: inherit;
@@ -259,6 +301,38 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+
+    .ccw-settings__footer {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 2px;
+    }
+
+    .ccw-settings__reset-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 120ms ease, border-color 120ms ease;
+    }
+
+    .ccw-settings__reset-btn:hover,
+    .ccw-settings__reset-btn:focus-visible {
+      color: var(--fg);
+      border-color: var(--border);
+      outline: none;
+    }
+
+    .ccw-settings__reset-btn[data-confirm="true"] {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
   `;
 
   /** @type {ReadonlyArray<{ value: CCWLandingTarget; label: string }>} */
@@ -285,9 +359,15 @@
     { value: "hidden", label: "Always hide" },
   ];
 
+  /** @type {ReadonlyArray<{ value: CCWThumbnailMode; label: string }>} */
+  const THUMBNAIL_OPTIONS = [
+    { value: "normal", label: "Normal" },
+    { value: "no_hover_preview", label: "Stop hover-autoplay previews" },
+    { value: "blur", label: "Blur thumbnails" },
+    { value: "hidden", label: "Hide thumbnails" },
+  ];
+
   /**
-   * Builds a spinnerless `[ − ] 20 min [ + ]` numeric stepper control.
-   *
    * @param {{
    *   id: string;
    *   min: number;
@@ -423,8 +503,60 @@
   }
 
   /**
-   * Builds a clean settings row with an accessible pill switch (`role="switch"`).
-   *
+   * @template {string} T
+   * @param {{
+   *   id: string;
+   *   label: string;
+   *   hint: string;
+   *   options: ReadonlyArray<{ value: T; label: string }>;
+   *   isFirst?: boolean;
+   *   onChange: (value: T) => void;
+   * }} cfg
+   */
+  function createSelectRow(cfg) {
+    const row = document.createElement("div");
+    row.className = cfg.isFirst
+      ? "ccw-settings__row ccw-settings__row--first"
+      : "ccw-settings__row";
+
+    const labels = document.createElement("div");
+    labels.className = "ccw-settings__label-group";
+
+    const labelEl = document.createElement("label");
+    labelEl.className = "ccw-settings__label";
+    labelEl.htmlFor = cfg.id;
+    labelEl.textContent = cfg.label;
+
+    const hintEl = document.createElement("p");
+    hintEl.className = "ccw-settings__hint";
+    hintEl.textContent = cfg.hint;
+
+    labels.append(labelEl, hintEl);
+
+    const selectEl = document.createElement("select");
+    selectEl.className = "ccw-settings__select";
+    selectEl.id = cfg.id;
+    for (const opt of cfg.options) {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      selectEl.appendChild(optionEl);
+    }
+
+    selectEl.addEventListener("change", () => {
+      cfg.onChange(/** @type {T} */ (selectEl.value));
+    });
+
+    row.append(labels, selectEl);
+    return {
+      element: row,
+      setValue(/** @type {T} */ val) {
+        selectEl.value = val;
+      },
+    };
+  }
+
+  /**
    * @param {{
    *   id: string;
    *   label: string;
@@ -485,7 +617,7 @@
   }
 
   /**
-   * Mounts the shared Settings UI inside `container`.
+   * Mounts the shared 4-tab Settings UI inside `container`.
    *
    * @param {HTMLElement} container
    * @param {CCWSettingsPanelOptions} options
@@ -529,8 +661,9 @@
     /** @type {number | undefined} */
     let saveTimer;
 
-    function flashSaved() {
-      saveStatus.textContent = "Saved locally.";
+    /** @param {string} [msg] */
+    function flashSaved(msg = "Saved locally.") {
+      saveStatus.textContent = msg;
       window.clearTimeout(saveTimer);
       saveTimer = window.setTimeout(() => {
         saveStatus.textContent = "";
@@ -547,64 +680,33 @@
       options.onSettingsChanged?.(updated);
     }
 
-    // --- Card 1: Session & Starting Screen ---
+    // --- Tab 1: Session ---
     const sessionCard = document.createElement("section");
     sessionCard.className = "ccw-settings__card";
+    sessionCard.setAttribute("role", "tabpanel");
 
-    const sessionSectionTitle = document.createElement("h2");
-    sessionSectionTitle.className = "ccw-settings__section-title";
-    sessionSectionTitle.textContent = "Session & Starting Screen";
+    const selectLanding = createSelectRow({
+      id: "ccw-default-landing",
+      label: "Starting screen",
+      hint: "Replaces bare youtube.com and the Home button during active sessions. Direct video & search links are preserved.",
+      options: LANDING_OPTIONS,
+      isFirst: true,
+      onChange: (val) => commitPatch({ defaultLanding: val }),
+    });
 
-    // Row 1: Starting screen
-    const rowLanding = document.createElement("div");
-    rowLanding.className = "ccw-settings__row ccw-settings__row--first";
-
-    const landingLabels = document.createElement("div");
-    landingLabels.className = "ccw-settings__label-group";
-
-    const landingLabel = document.createElement("label");
-    landingLabel.className = "ccw-settings__label";
-    landingLabel.htmlFor = "ccw-default-landing";
-    landingLabel.textContent = "Starting screen";
-
-    const landingHint = document.createElement("p");
-    landingHint.className = "ccw-settings__hint";
-    landingHint.textContent =
-      "Replaces bare youtube.com and the Home button during active sessions. Direct video & search links are preserved.";
-
-    landingLabels.append(landingLabel, landingHint);
-
-    const landingSelect = document.createElement("select");
-    landingSelect.className = "ccw-settings__select";
-    landingSelect.id = "ccw-default-landing";
-    for (const opt of LANDING_OPTIONS) {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      landingSelect.appendChild(optionEl);
-    }
-
-    rowLanding.append(landingLabels, landingSelect);
-
-    // Row 2: Default slider duration
     const rowDefaultMins = document.createElement("div");
     rowDefaultMins.className = "ccw-settings__row";
-
     const defaultMinsLabels = document.createElement("div");
     defaultMinsLabels.className = "ccw-settings__label-group";
-
     const defaultMinsLabel = document.createElement("label");
     defaultMinsLabel.className = "ccw-settings__label";
     defaultMinsLabel.htmlFor = "ccw-default-minutes";
     defaultMinsLabel.textContent = "Default slider duration";
-
     const defaultMinsHint = document.createElement("p");
     defaultMinsHint.className = "ccw-settings__hint";
     defaultMinsHint.textContent =
       "Initial position when the Entry Gate opens (1–240 min).";
-
     defaultMinsLabels.append(defaultMinsLabel, defaultMinsHint);
-
     const defaultMinsStepper = createNumberStepper({
       id: "ccw-default-minutes",
       min: 1,
@@ -615,28 +717,21 @@
       ariaLabel: "default slider duration in minutes",
       onCommit: (nextVal) => commitPatch({ defaultMinutes: nextVal }),
     });
-
     rowDefaultMins.append(defaultMinsLabels, defaultMinsStepper.element);
 
-    // Row 3: Post-session cooldown
     const rowCooldown = document.createElement("div");
     rowCooldown.className = "ccw-settings__row";
-
     const cooldownLabels = document.createElement("div");
     cooldownLabels.className = "ccw-settings__label-group";
-
     const cooldownLabel = document.createElement("label");
     cooldownLabel.className = "ccw-settings__label";
     cooldownLabel.htmlFor = "ccw-cooldown-minutes";
     cooldownLabel.textContent = "Post-session cooldown";
-
     const cooldownHint = document.createElement("p");
     cooldownHint.className = "ccw-settings__hint";
     cooldownHint.textContent =
       "Optional break enforced after a session ends (0 = disabled).";
-
     cooldownLabels.append(cooldownLabel, cooldownHint);
-
     const cooldownStepper = createNumberStepper({
       id: "ccw-cooldown-minutes",
       min: 0,
@@ -647,55 +742,28 @@
       ariaLabel: "post-session cooldown in minutes",
       onCommit: (nextVal) => commitPatch({ cooldownMinutes: nextVal }),
     });
-
     rowCooldown.append(cooldownLabels, cooldownStepper.element);
 
-    // Row 4: Top-bar timer pill visibility
-    const rowTimerVis = document.createElement("div");
-    rowTimerVis.className = "ccw-settings__row";
-
-    const timerVisLabels = document.createElement("div");
-    timerVisLabels.className = "ccw-settings__label-group";
-
-    const timerVisLabel = document.createElement("label");
-    timerVisLabel.className = "ccw-settings__label";
-    timerVisLabel.htmlFor = "ccw-timer-visibility";
-    timerVisLabel.textContent = "Timer pill visibility";
-
-    const timerVisHint = document.createElement("p");
-    timerVisHint.className = "ccw-settings__hint";
-    timerVisHint.textContent =
-      "Show remaining time in YouTube's top bar (always hidden in fullscreen).";
-
-    timerVisLabels.append(timerVisLabel, timerVisHint);
-
-    const timerVisSelect = document.createElement("select");
-    timerVisSelect.className = "ccw-settings__select";
-    timerVisSelect.id = "ccw-timer-visibility";
-    for (const opt of TIMER_VISIBILITY_OPTIONS) {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      timerVisSelect.appendChild(optionEl);
-    }
-
-    rowTimerVis.append(timerVisLabels, timerVisSelect);
+    const selectTimerVis = createSelectRow({
+      id: "ccw-timer-visibility",
+      label: "Timer pill visibility",
+      hint: "Show remaining time in YouTube's top bar (always hidden in fullscreen).",
+      options: TIMER_VISIBILITY_OPTIONS,
+      onChange: (val) => commitPatch({ timerVisibility: val }),
+    });
 
     sessionCard.append(
-      sessionSectionTitle,
-      rowLanding,
+      selectLanding.element,
       rowDefaultMins,
       rowCooldown,
-      rowTimerVis
+      selectTimerVis.element
     );
 
-    // --- Card 2: Duration Filtering ---
+    // --- Tab 2: Filtering ---
     const filterCard = document.createElement("section");
     filterCard.className = "ccw-settings__card";
-
-    const filterSectionTitle = document.createElement("h2");
-    filterSectionTitle.className = "ccw-settings__section-title";
-    filterSectionTitle.textContent = "Duration Filtering";
+    filterCard.setAttribute("role", "tabpanel");
+    filterCard.hidden = true;
 
     const toggleBlockOverBudget = createToggleRow({
       id: "ccw-block-over-budget",
@@ -734,7 +802,6 @@
     });
 
     filterCard.append(
-      filterSectionTitle,
       toggleBlockOverBudget.element,
       toggleAllowLive.element,
       toggleExemptSearch.element,
@@ -742,77 +809,29 @@
       toggleExemptPlaylists.element
     );
 
-    // --- Card 3: Watch Page Focus ---
-    const watchFocusCard = document.createElement("section");
-    watchFocusCard.className = "ccw-settings__card";
+    // --- Tab 3: Watch & Playback ---
+    const watchCard = document.createElement("section");
+    watchCard.className = "ccw-settings__card";
+    watchCard.setAttribute("role", "tabpanel");
+    watchCard.hidden = true;
 
-    const watchFocusTitle = document.createElement("h2");
-    watchFocusTitle.className = "ccw-settings__section-title";
-    watchFocusTitle.textContent = "Watch Page Focus";
+    const selectWatchRecs = createSelectRow({
+      id: "ccw-watch-recs-mode",
+      label: "Watch-page recommendations",
+      hint: "Centers the video while hidden. Revealed items still respect remaining session time.",
+      options: WATCH_ELEMENT_OPTIONS,
+      isFirst: true,
+      onChange: (val) => commitPatch({ watchRecsMode: val }),
+    });
 
-    // Row 1: Watch-page recommendations
-    const rowWatchRecs = document.createElement("div");
-    rowWatchRecs.className = "ccw-settings__row ccw-settings__row--first";
+    const selectComments = createSelectRow({
+      id: "ccw-comments-mode",
+      label: "Comments",
+      hint: "Hide the comment section while watching so you can focus on the video.",
+      options: WATCH_ELEMENT_OPTIONS,
+      onChange: (val) => commitPatch({ commentsMode: val }),
+    });
 
-    const watchRecsLabels = document.createElement("div");
-    watchRecsLabels.className = "ccw-settings__label-group";
-
-    const watchRecsLabel = document.createElement("label");
-    watchRecsLabel.className = "ccw-settings__label";
-    watchRecsLabel.htmlFor = "ccw-watch-recs-mode";
-    watchRecsLabel.textContent = "Watch-page recommendations";
-
-    const watchRecsHint = document.createElement("p");
-    watchRecsHint.className = "ccw-settings__hint";
-    watchRecsHint.textContent =
-      "Centers the video while hidden. Revealed items still respect remaining session time.";
-
-    watchRecsLabels.append(watchRecsLabel, watchRecsHint);
-
-    const watchRecsSelect = document.createElement("select");
-    watchRecsSelect.className = "ccw-settings__select";
-    watchRecsSelect.id = "ccw-watch-recs-mode";
-    for (const opt of WATCH_ELEMENT_OPTIONS) {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      watchRecsSelect.appendChild(optionEl);
-    }
-
-    rowWatchRecs.append(watchRecsLabels, watchRecsSelect);
-
-    // Row 2: Comments
-    const rowComments = document.createElement("div");
-    rowComments.className = "ccw-settings__row";
-
-    const commentsLabels = document.createElement("div");
-    commentsLabels.className = "ccw-settings__label-group";
-
-    const commentsLabel = document.createElement("label");
-    commentsLabel.className = "ccw-settings__label";
-    commentsLabel.htmlFor = "ccw-comments-mode";
-    commentsLabel.textContent = "Comments";
-
-    const commentsHint = document.createElement("p");
-    commentsHint.className = "ccw-settings__hint";
-    commentsHint.textContent =
-      "Hide the comment section while watching so you can focus on the video.";
-
-    commentsLabels.append(commentsLabel, commentsHint);
-
-    const commentsSelect = document.createElement("select");
-    commentsSelect.className = "ccw-settings__select";
-    commentsSelect.id = "ccw-comments-mode";
-    for (const opt of WATCH_ELEMENT_OPTIONS) {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      commentsSelect.appendChild(optionEl);
-    }
-
-    rowComments.append(commentsLabels, commentsSelect);
-
-    // Row 3: Show "Show comments" button while watching
     const toggleEarlyComments = createToggleRow({
       id: "ccw-early-comments-btn",
       label: 'Show "Show comments" button while watching',
@@ -820,26 +839,10 @@
       onToggle: (val) => commitPatch({ showEarlyCommentsButton: val }),
     });
 
-    watchFocusCard.append(
-      watchFocusTitle,
-      rowWatchRecs,
-      rowComments,
-      toggleEarlyComments.element
-    );
-
-    // --- Card 4: Playback ---
-    const playbackCard = document.createElement("section");
-    playbackCard.className = "ccw-settings__card";
-
-    const playbackTitle = document.createElement("h2");
-    playbackTitle.className = "ccw-settings__section-title";
-    playbackTitle.textContent = "Playback";
-
     const toggleHold2x = createToggleRow({
       id: "ccw-disable-hold-2x",
       label: 'Disable "Hold for 2x Speed"',
-      hint: "Blocks holding down the mouse/pointer or Spacebar to jump to 2x speed, while keeping normal pause, scrubbing, and menu speed controls intact.",
-      isFirst: true,
+      hint: "Blocks holding down the mouse/pointer or Spacebar to jump to 2x speed, while keeping normal pause, scrubbing, and menu speeds intact.",
       onToggle: (val) => commitPatch({ disableHold2x: val }),
     });
 
@@ -850,23 +853,208 @@
       onToggle: (val) => commitPatch({ lockPlayback1x: val }),
     });
 
-    playbackCard.append(
-      playbackTitle,
+    const toggleDisableAutoplay = createToggleRow({
+      id: "ccw-disable-autoplay-next",
+      label: 'Disable "Autoplay Next"',
+      hint: "Automatically turns off YouTube's player Autoplay toggle so videos never advance on their own.",
+      onToggle: (val) => commitPatch({ disableAutoplayNext: val }),
+    });
+
+    const toggleHideEndScreens = createToggleRow({
+      id: "ccw-hide-end-screens",
+      label: "Hide in-player End-Screen cards & video wall",
+      hint: "Removes creator end-screen popups and the post-video suggestion grid inside the player.",
+      onToggle: (val) => commitPatch({ hideEndScreenCards: val }),
+    });
+
+    const toggleHideLiveChat = createToggleRow({
+      id: "ccw-hide-live-chat",
+      label: "Hide Live Chat",
+      hint: "Hides the live chat box on streams and premieres.",
+      onToggle: (val) => commitPatch({ hideLiveChat: val }),
+    });
+
+    watchCard.append(
+      selectWatchRecs.element,
+      selectComments.element,
+      toggleEarlyComments.element,
       toggleHold2x.element,
-      toggleLock1x.element
+      toggleLock1x.element,
+      toggleDisableAutoplay.element,
+      toggleHideEndScreens.element,
+      toggleHideLiveChat.element
     );
 
-    root.append(topRow, header, sessionCard, filterCard, watchFocusCard, playbackCard);
+    // --- Tab 4: Feeds & UI ---
+    const feedsUiCard = document.createElement("section");
+    feedsUiCard.className = "ccw-settings__card";
+    feedsUiCard.setAttribute("role", "tabpanel");
+    feedsUiCard.hidden = true;
+
+    const toggleHideShorts = createToggleRow({
+      id: "ccw-hide-shorts",
+      label: "Hide Shorts",
+      hint: "Hides Shorts shelves and sidebar tabs, and opens incoming /shorts/ links in the standard single-video player.",
+      isFirst: true,
+      onToggle: (val) => commitPatch({ hideShorts: val }),
+    });
+
+    const selectThumbnails = createSelectRow({
+      id: "ccw-thumbnail-mode",
+      label: "Thumbnails",
+      hint: "Control hover video previews or blur/hide thumbnail images while keeping duration badges legible.",
+      options: THUMBNAIL_OPTIONS,
+      onChange: (val) => commitPatch({ thumbnailMode: val }),
+    });
+
+    const toggleCleanSidebar = createToggleRow({
+      id: "ccw-hide-explore-sidebar",
+      label: "Clean up Left Sidebar clutter",
+      hint: 'Hides Explore, Trending, Shopping, Gaming, and "More from YouTube" while keeping Subscriptions & Library.',
+      onToggle: (val) => commitPatch({ hideExploreSidebar: val }),
+    });
+
+    const toggleHideBell = createToggleRow({
+      id: "ccw-hide-notification-bell",
+      label: "Hide Notification Bell & unread count",
+      hint: "Hides YouTube's top-bar notification bell and strips (N) unread badges from the browser tab title.",
+      onToggle: (val) => commitPatch({ hideNotificationBell: val }),
+    });
+
+    const toggleHidePosts = createToggleRow({
+      id: "ccw-hide-community-posts",
+      label: "Hide Community posts",
+      hint: "Hides text, image, and poll posts from feeds.",
+      onToggle: (val) => commitPatch({ hideCommunityPosts: val }),
+    });
+
+    const toggleHideMerchPlayables = createToggleRow({
+      id: "ccw-hide-merch-playables",
+      label: "Hide Playables, Merch & Promo shelves",
+      hint: "Hides YouTube Playables games shelves, product/ticket shelves below videos, and promo banners.",
+      onToggle: (val) => commitPatch({ hideMerchAndPlayables: val }),
+    });
+
+    feedsUiCard.append(
+      toggleHideShorts.element,
+      selectThumbnails.element,
+      toggleCleanSidebar.element,
+      toggleHideBell.element,
+      toggleHidePosts.element,
+      toggleHideMerchPlayables.element
+    );
+
+    // --- Category Tab Bar ---
+    const tabBar = document.createElement("div");
+    tabBar.className = "ccw-tabs";
+    tabBar.setAttribute("role", "tablist");
+    tabBar.setAttribute("aria-label", "Settings categories");
+
+    const tabDefs = [
+      { id: "session", label: "Session", panel: sessionCard },
+      { id: "filtering", label: "Filtering", panel: filterCard },
+      { id: "watch", label: "Watch & Playback", panel: watchCard },
+      { id: "feeds", label: "Feeds & UI", panel: feedsUiCard },
+    ];
+
+    /** @type {HTMLButtonElement[]} */
+    const tabButtons = [];
+
+    /** @param {number} activeIdx */
+    function selectTab(activeIdx) {
+      tabDefs.forEach((def, idx) => {
+        const isSelected = idx === activeIdx;
+        tabButtons[idx].setAttribute("aria-selected", String(isSelected));
+        tabButtons[idx].tabIndex = isSelected ? 0 : -1;
+        def.panel.hidden = !isSelected;
+      });
+    }
+
+    tabDefs.forEach((def, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ccw-tabs__btn";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", String(idx === 0));
+      btn.tabIndex = idx === 0 ? 0 : -1;
+      btn.textContent = def.label;
+      btn.addEventListener("click", () => selectTab(idx));
+      btn.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowRight") {
+          ev.preventDefault();
+          const next = (idx + 1) % tabDefs.length;
+          selectTab(next);
+          tabButtons[next].focus();
+        } else if (ev.key === "ArrowLeft") {
+          ev.preventDefault();
+          const prev = (idx - 1 + tabDefs.length) % tabDefs.length;
+          selectTab(prev);
+          tabButtons[prev].focus();
+        }
+      });
+      tabButtons.push(btn);
+      tabBar.appendChild(btn);
+    });
+
+    // --- Footer: Reset to Defaults (2-step inline confirm) ---
+    const footer = document.createElement("footer");
+    footer.className = "ccw-settings__footer";
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "ccw-settings__reset-btn";
+    resetBtn.textContent = "Reset to defaults";
+
+    /** @type {number | undefined} */
+    let confirmResetTimer;
+    let awaitingResetConfirm = false;
+
+    function clearResetConfirm() {
+      awaitingResetConfirm = false;
+      delete resetBtn.dataset.confirm;
+      resetBtn.textContent = "Reset to defaults";
+      window.clearTimeout(confirmResetTimer);
+    }
+
+    resetBtn.addEventListener("click", async () => {
+      if (!awaitingResetConfirm) {
+        awaitingResetConfirm = true;
+        resetBtn.dataset.confirm = "true";
+        resetBtn.textContent = "Confirm reset?";
+        confirmResetTimer = window.setTimeout(clearResetConfirm, 3500);
+        return;
+      }
+
+      clearResetConfirm();
+      const defaults = await state.resetSettings();
+      refresh(defaults);
+      flashSaved("Defaults restored.");
+      options.onSettingsChanged?.(defaults);
+    });
+
+    footer.appendChild(resetBtn);
+
+    root.append(
+      topRow,
+      header,
+      tabBar,
+      sessionCard,
+      filterCard,
+      watchCard,
+      feedsUiCard,
+      footer
+    );
     container.replaceChildren(root);
 
     /**
      * @param {CCWSettings} settings
      */
     function refresh(settings) {
-      landingSelect.value = settings.defaultLanding;
-      timerVisSelect.value = settings.timerVisibility;
-      watchRecsSelect.value = settings.watchRecsMode;
-      commentsSelect.value = settings.commentsMode;
+      selectLanding.setValue(settings.defaultLanding);
+      selectTimerVis.setValue(settings.timerVisibility);
+      selectWatchRecs.setValue(settings.watchRecsMode);
+      selectComments.setValue(settings.commentsMode);
+      selectThumbnails.setValue(settings.thumbnailMode);
       defaultMinsStepper.setValue(settings.defaultMinutes);
       cooldownStepper.setValue(settings.cooldownMinutes);
 
@@ -880,31 +1068,15 @@
         settings.commentsMode !== "after_video";
       toggleHold2x.setChecked(settings.disableHold2x);
       toggleLock1x.setChecked(settings.lockPlayback1x);
+      toggleDisableAutoplay.setChecked(settings.disableAutoplayNext);
+      toggleHideEndScreens.setChecked(settings.hideEndScreenCards);
+      toggleHideLiveChat.setChecked(settings.hideLiveChat);
+      toggleHideShorts.setChecked(settings.hideShorts);
+      toggleCleanSidebar.setChecked(settings.hideExploreSidebar);
+      toggleHideBell.setChecked(settings.hideNotificationBell);
+      toggleHidePosts.setChecked(settings.hideCommunityPosts);
+      toggleHideMerchPlayables.setChecked(settings.hideMerchAndPlayables);
     }
-
-    landingSelect.addEventListener("change", () =>
-      commitPatch({
-        defaultLanding: /** @type {CCWLandingTarget} */ (landingSelect.value),
-      })
-    );
-
-    timerVisSelect.addEventListener("change", () =>
-      commitPatch({
-        timerVisibility: /** @type {CCWTimerVisibility} */ (timerVisSelect.value),
-      })
-    );
-
-    watchRecsSelect.addEventListener("change", () =>
-      commitPatch({
-        watchRecsMode: /** @type {CCWWatchElementMode} */ (watchRecsSelect.value),
-      })
-    );
-
-    commentsSelect.addEventListener("change", () =>
-      commitPatch({
-        commentsMode: /** @type {CCWWatchElementMode} */ (commentsSelect.value),
-      })
-    );
 
     state.getState().then((snap) => refresh(snap.settings));
     const unsubscribe = state.subscribe((snap) => refresh(snap.settings));
@@ -914,6 +1086,7 @@
       destroy() {
         unsubscribe();
         window.clearTimeout(saveTimer);
+        window.clearTimeout(confirmResetTimer);
       },
     };
   }
