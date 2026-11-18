@@ -53,3 +53,27 @@ html[data-ccw-ready="unlocked"] #contents.ytd-rich-grid-row {
 html body ytd-continuation-item-renderer[data-ccw-pause-continuation="true"] {
   display: none !important;
 }
+
+/* Watch Page Focus: hide sidebar & player recommendations */
+html[data-ccw-hide-watch-recs="true"] ytd-watch-flexy #related,
+html[data-ccw-hide-watch-recs="true"] ytd-watch-next-secondary-results-renderer,
+html[data-ccw-hide-watch-recs="true"] #movie_player .ytp-ce-element,
+html[data-ccw-hide-watch-recs="true"] #movie_player .html5-endscreen {
+  display: none !important;
+}
+
+/* Watch Page Focus: center primary video column when right sidebar has no open panels */
+html[data-ccw-center-watch="true"] ytd-watch-flexy[is-two-columns_]:not([theater]):not([fullscreen]) #secondary {
+  display: none !important;
+}
+
+html[data-ccw-center-watch="true"] ytd-watch-flexy[is-two-columns_]:not([theater]):not([fullscreen]) #columns {
+  justify-content: center !important;
+}
+
+/* Watch Page Focus: hide comments section and top-comment teaser */
+html[data-ccw-hide-comments="true"] ytd-comments#comments,
+html[data-ccw-hide-comments="true"] #comment-teaser,
+html[data-ccw-hide-comments="true"] ytd-watch-metadata #comment-teaser {
+  display: none !important;
+}
