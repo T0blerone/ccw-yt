@@ -11,13 +11,7 @@
     searchOnly,
   } = CCW;
 
-  if (
-    !state ||
-    !tabAllowance ||
-    !mediaGuard ||
-    !entryGate ||
-    !searchOnly
-  ) {
+  if (!state || !tabAllowance || !mediaGuard || !entryGate || !searchOnly) {
     console.error("[ccw-yt] Missing required content modules.");
     return;
   }
@@ -26,12 +20,50 @@
   let latestSnapshot = null;
   let lastObservedHref = window.location.href;
   let storageCleanPending = false;
+  /** @type {string | null} */
+  let redirectingToPath = null;
 
   mediaGuard.init();
 
   /**
-   * Builds a live snapshot from `latestSnapshot` using the current wall-clock timestamp.
+   * @param {string} urlString
+   * @returns {boolean}
+   */
+  function isBareHomeUrl(urlString) {
+    try {
+      const url = new URL(urlString, window.location.origin);
+      return url.pathname === "/" && !url.search;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Finds YouTube's own sidebar/mini-guide SPA link for `targetPath` when available
+   * so clicking the YouTube Logo/Home transitions smoothly without a full reload.
    *
+   * @param {string} targetPath
+   * @returns {HTMLAnchorElement | null}
+   */
+  function findSpaGuideAnchor(targetPath) {
+    const candidates = document.querySelectorAll(
+      "ytd-guide-entry-renderer a[href], ytd-mini-guide-entry-renderer a[href]"
+    );
+    for (const el of candidates) {
+      if (!(el instanceof HTMLAnchorElement)) continue;
+      try {
+        const resolved = new URL(el.href, window.location.origin);
+        if (`${resolved.pathname}${resolved.search}` === targetPath) {
+          return el;
+        }
+      } catch {
+        // Ignore malformed hrefs
+      }
+    }
+    return null;
+  }
+
+  /**
    * @param {number} now
    * @returns {CCWStateSnapshot | null}
    */
@@ -59,6 +91,10 @@
     if (!live) return;
 
     const urlString = opts.urlOverride ?? window.location.href;
+    if (!isBareHomeUrl(urlString)) {
+      redirectingToPath = null;
+    }
+
     const isEnded =
       Boolean(opts.forceVideoEnded) || mediaGuard.isMainVideoEnded();
 
@@ -73,6 +109,24 @@
       docEl.dataset.ccwMode = resolution.mode;
     }
 
+    // Whenever an active timed session hits bare `/` and Starting Screen has a non-`/` route,
+    // keep `<html>` cloaked and redirect immediately so the Home feed never flashes.
+    if (resolution.mode === "active" && isBareHomeUrl(urlString)) {
+      const targetPath = state.getLandingPath(live.settings.defaultLanding);
+      if (targetPath !== "/") {
+        if (docEl) {
+          delete docEl.dataset.ccwReady;
+        }
+        searchOnly.update(false);
+        entryGate.update(resolution);
+        if (redirectingToPath !== targetPath) {
+          redirectingToPath = targetPath;
+          window.location.replace(targetPath);
+        }
+        return;
+      }
+    }
+
     const isUnlocked =
       resolution.mode === "active" || resolution.mode === "single_video";
 
@@ -82,12 +136,10 @@
       }
       mediaGuard.setLocked(false);
 
-      const isBareHome =
-        window.location.pathname === "/" && !window.location.search;
       const showSearchOnly =
         resolution.mode === "active" &&
         live.settings.defaultLanding === "search_only" &&
-        isBareHome;
+        isBareHomeUrl(urlString);
 
       searchOnly.update(showSearchOnly);
       entryGate.update(resolution);
@@ -100,7 +152,6 @@
       entryGate.update(resolution);
     }
 
-    // Persist storage cleanup once when a session or cooldown crosses `0:00`.
     const sessionJustExpired =
       Boolean(latestSnapshot?.session) && live.remainingSec <= 0;
     const cooldownJustExpired =
@@ -132,25 +183,6 @@
     async onStartTimedSession(minutes) {
       const result = await state.startTimedSession(minutes * 60);
       latestSnapshot = result.state;
-
-      if (!result.ok) {
-        syncUI();
-        return;
-      }
-
-      const isBareHome =
-        window.location.pathname === "/" && !window.location.search;
-      if (isBareHome) {
-        const targetPath = state.getLandingPath(
-          result.state.settings.defaultLanding
-        );
-        if (targetPath !== "/") {
-          // Stay cloaked on `/` while navigating directly to the configured landing screen.
-          window.location.replace(targetPath);
-          return;
-        }
-      }
-
       syncUI();
     },
 
@@ -159,12 +191,67 @@
       syncUI();
     },
 
-    onOpenOptions() {
-      ext.runtime.sendMessage({ type: MESSAGES.OPEN_OPTIONS }).catch((err) => {
-        console.error("[ccw-yt] Failed to open options page:", err);
-      });
+    onSettingsOverlayVisibilityChange(open) {
+      if (!open) {
+        syncUI();
+      }
     },
   });
+
+  // Allow Toolbar Popup to open the in-page Settings view inside the current YouTube tab
+  ext.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (
+      message &&
+      typeof message === "object" &&
+      "type" in message &&
+      message.type === MESSAGES.OPEN_INPAGE_SETTINGS
+    ) {
+      entryGate.openSettings();
+      sendResponse({ ok: true });
+    }
+    return false;
+  });
+
+  // Intercept unmodified clicks on YouTube's Logo or Home button (`href="/"`) during active sessions
+  document.addEventListener(
+    "click",
+    (ev) => {
+      if (
+        ev.button !== 0 ||
+        ev.metaKey ||
+        ev.ctrlKey ||
+        ev.shiftKey ||
+        ev.altKey
+      ) {
+        return;
+      }
+      if (!(ev.target instanceof Element) || !latestSnapshot?.session) return;
+      if (state.getRemainingSeconds(latestSnapshot.session) <= 0) return;
+
+      const targetPath = state.getLandingPath(
+        latestSnapshot.settings.defaultLanding
+      );
+      if (targetPath === "/") return;
+
+      const anchor = ev.target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (!isBareHomeUrl(anchor.href)) return;
+
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+
+      const currentPathAndQuery = `${window.location.pathname}${window.location.search}`;
+      if (currentPathAndQuery === targetPath) return;
+
+      const spaLink = findSpaGuideAnchor(targetPath);
+      if (spaLink) {
+        spaLink.click();
+      } else {
+        window.location.assign(targetPath);
+      }
+    },
+    true
+  );
 
   // SPA navigation & video completion listeners
   window.addEventListener("yt-navigate-start", (ev) => {
@@ -206,7 +293,6 @@
     true
   );
 
-  // Initial load + cross-tab subscription + wall-clock tick
   state
     .getState()
     .then(applySnapshot)

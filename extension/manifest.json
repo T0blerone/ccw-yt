@@ -58,6 +58,7 @@
         "src/shared/ext.js",
         "src/shared/icons.js",
         "src/shared/state.js",
+        "src/shared/settings-panel.js",
         "src/content/tab-allowance.js",
         "src/content/media-guard.js",
         "src/content/entry-gate.js",

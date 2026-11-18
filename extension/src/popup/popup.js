@@ -2,7 +2,7 @@ import "../shared/ext.js";
 import "../shared/icons.js";
 import "../shared/state.js";
 
-const { ext, icons, state } = CCW;
+const { ext, MESSAGES, icons, state } = CCW;
 
 const statusPill = document.getElementById("status-pill");
 const activePanel = document.getElementById("active-panel");
@@ -190,6 +190,19 @@ if (endSessionBtn) {
 
 if (openOptionsBtn) {
   openOptionsBtn.addEventListener("click", async () => {
+    try {
+      const tabs = await ext.tabs?.query({ active: true, currentWindow: true });
+      const activeTab = tabs?.[0];
+      if (activeTab?.id != null && activeTab.url) {
+        await ext.tabs?.sendMessage(activeTab.id, {
+          type: MESSAGES.OPEN_INPAGE_SETTINGS,
+        });
+        window.close();
+        return;
+      }
+    } catch {
+      // Fall back to opening the standalone options page
+    }
     await ext.runtime.openOptionsPage();
     window.close();
   });

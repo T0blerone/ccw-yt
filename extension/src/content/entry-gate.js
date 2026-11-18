@@ -1,5 +1,5 @@
 (() => {
-  const { icons, state } = CCW;
+  const { icons, state, settingsPanel } = CCW;
 
   const HOST_ID = "ccw-yt-gate-host";
 
@@ -28,6 +28,7 @@
       --bg: #f8f9fb;
       --surface: #ffffff;
       --surface-hover: #eef1f6;
+      --input-bg: #f8f9fb;
       --fg: #141820;
       --muted: #646e7e;
       --subtle: #8b95a5;
@@ -41,6 +42,7 @@
       inset: 0;
       width: 100vw;
       height: 100vh;
+      overflow-y: auto;
       background: var(--bg);
       color: var(--fg);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -48,15 +50,22 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 32px 24px;
       user-select: none;
       -webkit-font-smoothing: antialiased;
+    }
+
+    .gate[data-view="settings"] {
+      justify-content: flex-start;
+      padding-top: 48px;
+      padding-bottom: 48px;
     }
 
     .gate[data-theme="dark"] {
       --bg: #0f0f0f;
       --surface: #1a1d24;
       --surface-hover: #242933;
+      --input-bg: #11141a;
       --fg: #f3f5f8;
       --muted: #98a2b3;
       --subtle: #697386;
@@ -100,6 +109,12 @@
       align-items: center;
       text-align: center;
       gap: 28px;
+    }
+
+    .gate__settings-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
     }
 
     .gate__eyebrow {
@@ -332,18 +347,24 @@
       text-decoration: underline;
       outline: none;
     }
+
+    ${settingsPanel.STYLES}
   `;
 
   /** @type {HTMLDivElement | null} */
   let hostEl = null;
   /** @type {HTMLDivElement | null} */
   let rootContainer = null;
+  /** @type {HTMLButtonElement | null} */
+  let settingsGearBtn = null;
   /** @type {HTMLDivElement | null} */
   let timerView = null;
   /** @type {HTMLDivElement | null} */
   let videoView = null;
   /** @type {HTMLDivElement | null} */
   let cooldownView = null;
+  /** @type {HTMLDivElement | null} */
+  let settingsView = null;
   /** @type {HTMLInputElement | null} */
   let minutesInput = null;
   /** @type {HTMLInputElement | null} */
@@ -361,20 +382,22 @@
    * @type {{
    *   onStartTimedSession: (minutes: number) => Promise<void>;
    *   onGrantSingleVideo: (videoId: string) => void;
-   *   onOpenOptions: () => void;
+   *   onSettingsOverlayVisibilityChange?: (open: boolean) => void;
    * } | null}
    */
   let gateCallbacks = null;
 
+  /** @type {CCWTabResolution | null} */
+  let latestResolution = null;
   let selectedMinutes = 20;
   let forceTimerOnVideo = false;
-  let wasVisible = false;
+  let showingSettings = false;
+  let wasLockedVisible = false;
   /** @type {string | null} */
   let activeVideoId = null;
 
   /**
    * Extracts clean plain-text video title from YouTube's `<title>` without thumbnails.
-   * Strips leading unread count `(3) ` and trailing ` - YouTube`.
    *
    * @returns {string | null}
    */
@@ -437,6 +460,27 @@
     setSelectedMinutes(Math.max(5, Math.min(120, next)));
   }
 
+  function openSettings() {
+    ensureMounted();
+    showingSettings = true;
+    if (latestResolution) {
+      update(latestResolution);
+    } else if (hostEl) {
+      hostEl.hidden = false;
+      renderSubView("locked");
+    }
+    gateCallbacks?.onSettingsOverlayVisibilityChange?.(true);
+  }
+
+  function closeSettings() {
+    if (!showingSettings) return;
+    showingSettings = false;
+    if (latestResolution) {
+      update(latestResolution);
+    }
+    gateCallbacks?.onSettingsOverlayVisibilityChange?.(false);
+  }
+
   function ensureMounted() {
     if (hostEl && hostEl.isConnected) return;
     if (!document.documentElement) return;
@@ -448,8 +492,20 @@
 
       const shadow = hostEl.attachShadow({ mode: "open" });
 
-      // Stop keyboard events inside Shadow DOM from bubbling out to YouTube's hotkeys
-      for (const evtName of ["keydown", "keypress", "keyup"]) {
+      shadow.addEventListener("keydown", (ev) => {
+        const ke = /** @type {KeyboardEvent} */ (ev);
+        if (ke.key === "Escape" && showingSettings) {
+          ke.preventDefault();
+          ke.stopPropagation();
+          closeSettings();
+          return;
+        }
+        if (!ke.metaKey && !ke.ctrlKey && !ke.altKey) {
+          ev.stopPropagation();
+        }
+      });
+
+      for (const evtName of ["keypress", "keyup"]) {
         shadow.addEventListener(evtName, (ev) => {
           const ke = /** @type {KeyboardEvent} */ (ev);
           if (!ke.metaKey && !ke.ctrlKey && !ke.altKey) {
@@ -464,14 +520,14 @@
       rootContainer = document.createElement("div");
       rootContainer.className = "gate";
 
-      const settingsBtn = document.createElement("button");
-      settingsBtn.type = "button";
-      settingsBtn.className = "gate__settings-btn";
-      settingsBtn.title = "Settings";
-      settingsBtn.setAttribute("aria-label", "Settings");
-      settingsBtn.appendChild(icons.create("gear", 22));
-      settingsBtn.addEventListener("click", () => {
-        gateCallbacks?.onOpenOptions();
+      settingsGearBtn = document.createElement("button");
+      settingsGearBtn.type = "button";
+      settingsGearBtn.className = "gate__settings-btn";
+      settingsGearBtn.title = "Settings";
+      settingsGearBtn.setAttribute("aria-label", "Settings");
+      settingsGearBtn.appendChild(icons.create("gear", 22));
+      settingsGearBtn.addEventListener("click", () => {
+        openSettings();
       });
 
       // --- 1. Timer View ---
@@ -620,6 +676,19 @@
 
       cooldownView.append(cdIcon, cooldownTimeEl, cdNote);
 
+      // --- 4. In-Page Settings View ---
+      settingsView = document.createElement("div");
+      settingsView.className = "gate__settings-wrap";
+      settingsView.hidden = true;
+
+      settingsPanel.mount(settingsView, {
+        backLabel: "Back",
+        onBack: () => closeSettings(),
+        onSettingsChanged: (updated) => {
+          setSelectedMinutes(updated.defaultMinutes);
+        },
+      });
+
       // --- Subtle bottom switcher on `/watch?v=...` ---
       const bottomBar = document.createElement("div");
       bottomBar.className = "gate__bottom-note";
@@ -649,7 +718,14 @@
 
       bottomBar.append(switchToSessionBtn, backToVideoBtn);
 
-      rootContainer.append(settingsBtn, timerView, videoView, cooldownView, bottomBar);
+      rootContainer.append(
+        settingsGearBtn,
+        timerView,
+        videoView,
+        cooldownView,
+        settingsView,
+        bottomBar
+      );
       shadow.append(styleEl, rootContainer);
     }
 
@@ -661,7 +737,25 @@
    * @param {CCWTabMode} mode
    */
   function renderSubView(mode) {
-    if (!timerView || !videoView || !cooldownView) return;
+    if (!timerView || !videoView || !cooldownView || !settingsView || !rootContainer) {
+      return;
+    }
+
+    if (showingSettings) {
+      rootContainer.dataset.view = "settings";
+      if (settingsGearBtn) settingsGearBtn.hidden = true;
+      settingsView.hidden = false;
+      timerView.hidden = true;
+      videoView.hidden = true;
+      cooldownView.hidden = true;
+      if (switchToSessionBtn) switchToSessionBtn.hidden = true;
+      if (backToVideoBtn) backToVideoBtn.hidden = true;
+      return;
+    }
+
+    delete rootContainer.dataset.view;
+    if (settingsGearBtn) settingsGearBtn.hidden = false;
+    settingsView.hidden = true;
 
     if (mode === "cooldown") {
       timerView.hidden = true;
@@ -693,7 +787,7 @@
    * @param {{
    *   onStartTimedSession: (minutes: number) => Promise<void>;
    *   onGrantSingleVideo: (videoId: string) => void;
-   *   onOpenOptions: () => void;
+   *   onSettingsOverlayVisibilityChange?: (open: boolean) => void;
    * }} callbacks
    */
   function init(callbacks) {
@@ -704,11 +798,9 @@
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", syncTheme);
 
-    // Watch `<html dark>` attribute and `<title>` mutations so theme and plain-text
-    // video title stay current as YouTube hydrates in the background.
     const docObserver = new MutationObserver(() => {
       syncTheme();
-      if (wasVisible && activeVideoId) {
+      if (wasLockedVisible && activeVideoId) {
         refreshVideoTitleDisplay();
       }
     });
@@ -725,7 +817,7 @@
     const observeHeadTitle = () => {
       if (!document.head) return;
       const titleObserver = new MutationObserver(() => {
-        if (wasVisible && activeVideoId) {
+        if (wasLockedVisible && activeVideoId) {
           refreshVideoTitleDisplay();
         }
       });
@@ -749,14 +841,15 @@
    * @param {CCWTabResolution} resolution
    */
   function update(resolution) {
+    latestResolution = resolution;
     ensureMounted();
     if (!hostEl) return;
 
-    const shouldShow =
+    const isGateLocked =
       resolution.mode === "locked" || resolution.mode === "cooldown";
 
-    if (!shouldShow) {
-      wasVisible = false;
+    if (!isGateLocked && !showingSettings) {
+      wasLockedVisible = false;
       forceTimerOnVideo = false;
       hostEl.hidden = true;
       return;
@@ -765,8 +858,8 @@
     const videoChanged = activeVideoId !== resolution.currentVideoId;
     activeVideoId = resolution.currentVideoId;
 
-    if (!wasVisible) {
-      wasVisible = true;
+    if (isGateLocked && !wasLockedVisible) {
+      wasLockedVisible = true;
       forceTimerOnVideo = false;
       setSelectedMinutes(resolution.state.settings.defaultMinutes);
     } else if (videoChanged) {
@@ -786,5 +879,7 @@
   CCW.entryGate = Object.freeze({
     init,
     update,
+    openSettings,
+    closeSettings,
   });
 })();

@@ -2,6 +2,11 @@
  * Ambient declarations for `ccw-yt` shared namespaces.
  */
 
+interface CCWTabInfo {
+  id?: number;
+  url?: string;
+}
+
 interface CCWExtensionAPI {
   storage: {
     local: {
@@ -24,6 +29,10 @@ interface CCWExtensionAPI {
       ): void;
     };
   };
+  tabs?: {
+    query(queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<CCWTabInfo[]>;
+    sendMessage(tabId: number, message: unknown): Promise<unknown>;
+  };
   runtime: {
     sendMessage(message: unknown): Promise<unknown>;
     openOptionsPage(): Promise<void>;
@@ -42,6 +51,7 @@ interface CCWExtensionAPI {
 
 interface CCWMessages {
   readonly OPEN_OPTIONS: "CCW_OPEN_OPTIONS";
+  readonly OPEN_INPAGE_SETTINGS: "CCW_OPEN_INPAGE_SETTINGS";
 }
 
 type CCWIconName =
@@ -107,6 +117,25 @@ interface CCWStateAPI {
   subscribe(listener: (state: CCWStateSnapshot) => void): () => void;
 }
 
+interface CCWSettingsPanelOptions {
+  backLabel: string;
+  onBack: () => void;
+  onSettingsChanged?: (settings: CCWSettings) => void;
+}
+
+interface CCWSettingsPanelHandle {
+  refresh(settings: CCWSettings): void;
+  destroy(): void;
+}
+
+interface CCWSettingsPanelAPI {
+  readonly STYLES: string;
+  mount(
+    container: HTMLElement,
+    options: CCWSettingsPanelOptions
+  ): CCWSettingsPanelHandle;
+}
+
 type CCWTabMode = "active" | "single_video" | "cooldown" | "locked";
 
 interface CCWTabResolution {
@@ -145,9 +174,11 @@ interface CCWEntryGateAPI {
   init(callbacks: {
     onStartTimedSession: (minutes: number) => Promise<void>;
     onGrantSingleVideo: (videoId: string) => void;
-    onOpenOptions: () => void;
+    onSettingsOverlayVisibilityChange?: (open: boolean) => void;
   }): void;
   update(resolution: CCWTabResolution): void;
+  openSettings(): void;
+  closeSettings(): void;
 }
 
 interface CCWSearchOnlyAPI {
@@ -159,6 +190,7 @@ interface CCWNamespace {
   MESSAGES: CCWMessages;
   icons: CCWIconsAPI;
   state: CCWStateAPI;
+  settingsPanel: CCWSettingsPanelAPI;
   tabAllowance: CCWTabAllowanceAPI;
   mediaGuard: CCWMediaGuardAPI;
   entryGate: CCWEntryGateAPI;

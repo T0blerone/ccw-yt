@@ -1,7 +1,8 @@
 :root {
   color-scheme: light dark;
   --bg: #f6f7f9;
-  --card-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #eef1f6;
   --input-bg: #f8f9fb;
   --fg: #141820;
   --muted: #5b6472;
@@ -12,7 +13,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f1218;
-    --card-bg: #171c26;
+    --surface: #171c26;
+    --surface-hover: #212836;
     --input-bg: #11151d;
     --fg: #f4f6f8;
     --muted: #9aa3b2;
@@ -34,107 +36,10 @@ body {
   line-height: 1.5;
 }
 
-.options {
+.options-host {
   max-width: 680px;
   margin: 40px auto;
   padding: 0 20px;
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.options__title {
-  margin: 0 0 4px;
-  font-size: 24px;
-  font-weight: 650;
-}
-
-.options__subtitle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.options__card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.options__section-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.options__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.options__row:first-of-type {
-  padding-top: 4px;
-  border-top: none;
-}
-
-.options__label-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.options__label {
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.options__hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.options__select,
-.options__number {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: var(--input-bg);
-  color: var(--fg);
-  font: inherit;
-  font-size: 14px;
-}
-
-.options__select {
-  min-width: 210px;
-}
-
-.options__number {
-  width: 92px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.options__select:focus,
-.options__number:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.options__saved {
-  margin: 0;
-  min-height: 20px;
-  font-size: 13px;
-  color: var(--muted);
+  justify-content: center;
 }

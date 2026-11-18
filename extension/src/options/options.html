@@ -7,77 +7,7 @@
     <link rel="stylesheet" href="./options.css" />
   </head>
   <body>
-    <main class="options">
-      <header class="options__header">
-        <h1 class="options__title">ccw-yt Settings</h1>
-        <p class="options__subtitle">
-          100% local settings — stored strictly on your device.
-        </p>
-      </header>
-
-      <section class="options__card">
-        <h2 class="options__section-title">Session &amp; Entry Gate</h2>
-
-        <div class="options__row">
-          <div class="options__label-group">
-            <label class="options__label" for="default-landing">
-              Starting screen
-            </label>
-            <p class="options__hint">
-              Where bare <code>youtube.com</code> opens when you start a timed session. Direct video and search links are preserved.
-            </p>
-          </div>
-          <select class="options__select" id="default-landing">
-            <option value="home">Home</option>
-            <option value="subscriptions">Subscriptions</option>
-            <option value="search_only">Search-Only (hide Home feed)</option>
-            <option value="watch_later">Watch Later</option>
-            <option value="library">Library (You)</option>
-            <option value="history">History</option>
-          </select>
-        </div>
-
-        <div class="options__row">
-          <div class="options__label-group">
-            <label class="options__label" for="default-minutes">
-              Default slider duration (minutes)
-            </label>
-            <p class="options__hint">
-              Initial position when the Entry Gate opens (1–240 min).
-            </p>
-          </div>
-          <input
-            type="number"
-            class="options__number"
-            id="default-minutes"
-            min="1"
-            max="240"
-            step="5"
-          />
-        </div>
-
-        <div class="options__row">
-          <div class="options__label-group">
-            <label class="options__label" for="cooldown-minutes">
-              Post-session cooldown (minutes)
-            </label>
-            <p class="options__hint">
-              Optional break enforced after a session ends (0 = disabled).
-            </p>
-          </div>
-          <input
-            type="number"
-            class="options__number"
-            id="cooldown-minutes"
-            min="0"
-            max="240"
-            step="5"
-          />
-        </div>
-      </section>
-
-      <p class="options__saved" id="save-indicator" aria-live="polite"></p>
-    </main>
+    <main class="options-host" id="options-root"></main>
     <script type="module" src="./options.js"></script>
   </body>
 </html>
