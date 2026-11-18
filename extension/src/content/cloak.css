@@ -43,6 +43,29 @@ html body [data-ccw-filtered="true"] {
   display: none !important;
 }
 
+/* Zero-flash pending cloak: keep newly inserted video cards invisible until duration is verified */
+html[data-ccw-filtering-active="true"] ytd-rich-item-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-video-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-grid-video-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-compact-video-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-compact-radio-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-compact-playlist-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] #related yt-lockup-view-model:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-search yt-lockup-view-model:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-playlist-video-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-playlist-panel-video-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-radio-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-playlist-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] ytd-reel-item-renderer:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] .ytp-ce-video:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] .ytp-ce-playlist:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] .ytp-videowall-still:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]),
+html[data-ccw-filtering-active="true"] .ytp-modern-videowall-still:not([data-ccw-approved="true"]):not([data-ccw-filtered="true"]) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Unwrap YouTube's fixed 3-item row wrappers so remaining visible cards reflow without gaps */
 html[data-ccw-ready="unlocked"] ytd-rich-grid-row,
 html[data-ccw-ready="unlocked"] #contents.ytd-rich-grid-row {

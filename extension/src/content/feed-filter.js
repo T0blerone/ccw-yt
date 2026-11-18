@@ -19,6 +19,7 @@
     ".ytp-ce-video",
     ".ytp-ce-playlist",
     ".ytp-videowall-still",
+    ".ytp-modern-videowall-still",
   ].join(", ");
 
   const SHELF_SELECTOR =
@@ -32,8 +33,8 @@
     "ytd-thumbnail-overlay-time-status-renderer #text",
     "span.ytd-thumbnail-overlay-time-status-renderer",
     '[class*="time-status"]',
-    ".ytp-videowall-still-info-duration",
-    ".ytp-ce-video-duration",
+    '[class*="videowall-still-info-duration"]',
+    '[class*="ce-video-duration"]',
   ].join(", ");
 
   const THUMBNAIL_CONTAINER_SELECTOR =
@@ -310,7 +311,8 @@
     }
 
     // 3. Check primary link for Mixes (`list=RD...` / `start_radio=1`) or Playlists (`/playlist?list=`)
-    const primaryLink = card.querySelector("a[href]");
+    const primaryLink =
+      card instanceof HTMLAnchorElement ? card : card.querySelector("a[href]");
     if (primaryLink instanceof HTMLAnchorElement && primaryLink.href) {
       try {
         const url = new URL(primaryLink.href, window.location.origin);
@@ -350,8 +352,14 @@
       if (!statusMatch) statusMatch = res;
     }
 
-    // 6. Class-agnostic leaf scan inside thumbnail container (immune to Wiz class renames)
-    const thumbRoot = card.querySelector(THUMBNAIL_CONTAINER_SELECTOR);
+    // 6. Class-agnostic leaf scan inside thumbnail container or player endscreen tile
+    const isPlayerTile =
+      card.classList.contains("ytp-videowall-still") ||
+      card.classList.contains("ytp-modern-videowall-still") ||
+      card.classList.contains("ytp-ce-video");
+    const thumbRoot = isPlayerTile
+      ? card
+      : card.querySelector(THUMBNAIL_CONTAINER_SELECTOR);
     if (thumbRoot) {
       for (const node of thumbRoot.querySelectorAll("*")) {
         if (node.children.length > 0) continue;
@@ -366,7 +374,13 @@
       return statusMatch;
     }
 
-    // 7. Fallback to any `[aria-label]` inside the card (catches `a#video-title-link`, Wiz titles, etc.)
+    // 7. Fallback to any `[aria-label]` inside (or on) the card
+    if (card.hasAttribute("aria-label")) {
+      const selfAria = parseAriaDuration(card.getAttribute("aria-label") || "");
+      if (selfAria !== null) {
+        return { kind: "video", durationSec: selfAria };
+      }
+    }
     for (const labeled of card.querySelectorAll("a[aria-label], h3[aria-label], span[aria-label]")) {
       const label = labeled.getAttribute("aria-label") || "";
       if (!label) continue;
@@ -376,12 +390,24 @@
       }
     }
 
-    // 7. Non-video items (Community posts, Channel cards, Ads without watch links)
+    // Creator end-screen cards (`.ytp-ce-video`) often omit duration text completely;
+    // treat unbadged creator end-cards as unbounded so over-budget videos don't slip onto the player.
+    if (card.classList.contains("ytp-ce-video") && primaryLink) {
+      return { kind: "mix" };
+    }
+
+    // 8. Non-video items (Community posts, Channel cards, Ads without watch/shorts links)
+    const hasVideoOrShortsLink =
+      (card instanceof HTMLAnchorElement &&
+        (card.href.includes("/watch") || card.href.includes("/shorts/"))) ||
+      Boolean(card.querySelector('a[href*="/watch"], a[href*="/shorts/"]'));
+
     if (
-      card.querySelector(
-        "ytd-post-renderer, ytd-backstage-post-thread-renderer, ytd-channel-renderer, ytd-Display-ad-renderer, ytd-in-feed-ad-layout-renderer"
-      ) &&
-      !card.querySelector('a[href*="/watch"]')
+      !hasVideoOrShortsLink &&
+      (card.querySelector(
+        "ytd-post-renderer, ytd-backstage-post-thread-renderer, ytd-channel-renderer, ytd-display-ad-renderer, ytd-in-feed-ad-layout-renderer"
+      ) ||
+        Boolean(primaryLink))
     ) {
       return { kind: "non_video" };
     }
@@ -476,9 +502,20 @@
 
   /**
    * @param {Element} card
-   * @param {boolean} hide
+   * @returns {string}
    */
-  function applyCardVisibility(card, hide) {
+  function getCardPrimaryHref(card) {
+    if (card instanceof HTMLAnchorElement) return card.getAttribute("href") || "";
+    const a = card.querySelector('a[href*="/watch"], a[href*="/shorts/"], a[href]');
+    return a?.getAttribute("href") || "";
+  }
+
+  /**
+   * @param {Element} card
+   * @param {boolean} hide
+   * @param {string} currentHref
+   */
+  function applyCardVisibility(card, hide, currentHref) {
     const alreadyFiltered = card.getAttribute("data-ccw-filtered") === "true";
 
     if (!hide) {
@@ -486,13 +523,18 @@
         setElementFiltered(card, false);
       }
       card.removeAttribute("data-ccw-defer-hide");
+      card.setAttribute("data-ccw-approved", "true");
+      card.setAttribute("data-ccw-href", currentHref);
       return;
     }
 
     if (alreadyFiltered) return;
 
-    // Hover / focus guard: never yank a visible card out from under the user's cursor
-    if (card.matches(":hover") || card.matches(":focus-within")) {
+    // Hover / focus guard: never yank an already-approved visible card out from under the cursor
+    if (
+      card.getAttribute("data-ccw-approved") === "true" &&
+      (card.matches(":hover") || card.matches(":focus-within"))
+    ) {
       card.setAttribute("data-ccw-defer-hide", "true");
       if (!hoverDeferredListeners.has(card)) {
         hoverDeferredListeners.add(card);
@@ -504,12 +546,20 @@
     }
 
     card.removeAttribute("data-ccw-defer-hide");
+    card.removeAttribute("data-ccw-approved");
     setElementFiltered(card, true);
   }
 
   function clearAllFiltering() {
+    if (document.documentElement) {
+      delete document.documentElement.dataset.ccwFilteringActive;
+    }
     for (const el of document.querySelectorAll("[data-ccw-filtered]")) {
       setElementFiltered(el, false);
+    }
+    for (const el of document.querySelectorAll("[data-ccw-approved]")) {
+      el.removeAttribute("data-ccw-approved");
+      el.removeAttribute("data-ccw-href");
     }
     for (const el of document.querySelectorAll("[data-ccw-pause-continuation]")) {
       el.removeAttribute("data-ccw-pause-continuation");
@@ -757,8 +807,15 @@
       window.location.pathname === "/" &&
       !window.location.search
     ) {
+      if (document.documentElement) {
+        delete document.documentElement.dataset.ccwFilteringActive;
+      }
       hideFooter();
       return;
+    }
+
+    if (document.documentElement) {
+      document.documentElement.dataset.ccwFilteringActive = "true";
     }
 
     const candidates = document.querySelectorAll(CARD_SELECTOR);
@@ -770,11 +827,19 @@
       // Ignore elements inside cached inactive YouTube SPA route views
       if (card.closest(INACTIVE_PAGE_SELECTOR)) continue;
 
+      const currentHref = getCardPrimaryHref(card);
+      if (
+        card.getAttribute("data-ccw-approved") === "true" &&
+        card.getAttribute("data-ccw-href") !== currentHref
+      ) {
+        card.removeAttribute("data-ccw-approved");
+      }
+
       const info = classifyCard(card);
       if (info.kind === "pending") continue;
 
       const hide = shouldHideCard(card, info, currentResolution);
-      applyCardVisibility(card, hide);
+      applyCardVisibility(card, hide, currentHref);
 
       if (info.kind !== "non_video") {
         if (card.getAttribute("data-ccw-filtered") === "true") {
