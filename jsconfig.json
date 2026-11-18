@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "checkJs": true,
+    "maxNodeModuleJsDepth": 0,
     "noEmit": true,
     "strict": true,
     "target": "ES2022",
@@ -11,7 +12,11 @@
   },
   "include": [
     "extension/**/*.js",
-    "scripts/**/*.mjs",
     "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "web-ext-artifacts"
   ]
 }

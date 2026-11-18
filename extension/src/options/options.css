@@ -1,19 +1,25 @@
 :root {
   color-scheme: light dark;
   --bg: #f6f7f9;
-  --card-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #eef1f6;
+  --input-bg: #f8f9fb;
   --fg: #141820;
   --muted: #5b6472;
   --border: #dfe3ea;
+  --accent: #f06449;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f1218;
-    --card-bg: #171c26;
+    --surface: #171c26;
+    --surface-hover: #212836;
+    --input-bg: #11151d;
     --fg: #f4f6f8;
     --muted: #9aa3b2;
     --border: #2a3140;
+    --accent: #f2755d;
   }
 }
 
@@ -30,35 +36,10 @@ body {
   line-height: 1.5;
 }
 
-.options {
+.options-host {
   max-width: 680px;
   margin: 40px auto;
   padding: 0 20px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.options__title {
-  margin: 0 0 6px;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.options__subtitle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.options__card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px 20px;
-}
-
-.options__note {
-  margin: 0;
-  color: var(--muted);
+  justify-content: center;
 }

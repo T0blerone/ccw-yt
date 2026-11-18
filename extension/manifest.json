@@ -51,10 +51,18 @@
         "*://www.youtube.com/*",
         "*://youtube.com/*"
       ],
+      "css": [
+        "src/content/cloak.css"
+      ],
       "js": [
         "src/shared/ext.js",
+        "src/shared/icons.js",
         "src/shared/state.js",
+        "src/shared/settings-panel.js",
         "src/content/tab-allowance.js",
+        "src/content/media-guard.js",
+        "src/content/entry-gate.js",
+        "src/content/search-only.js",
         "src/content/bootstrap.js"
       ],
       "run_at": "document_start"

@@ -1,18 +1,20 @@
 import "../shared/ext.js";
+import "../shared/icons.js";
+import "../shared/state.js";
+import "../shared/settings-panel.js";
 
-const { ext } = CCW;
+const { settingsPanel } = CCW;
 
-const statusEl = document.getElementById("storage-status");
+const styleEl = document.createElement("style");
+styleEl.textContent = settingsPanel.STYLES;
+document.head.appendChild(styleEl);
 
-async function checkLocalStorage() {
-  if (!statusEl) return;
-  try {
-    await ext.storage.local.get(null);
-    statusEl.textContent =
-      "Local storage connected. Configurable distraction & timer settings will be added incrementally.";
-  } catch (err) {
-    statusEl.textContent = `Failed to read storage.local: ${String(err)}`;
-  }
+const root = document.getElementById("options-root");
+if (root) {
+  settingsPanel.mount(root, {
+    backLabel: "Back to YouTube",
+    onBack() {
+      window.location.assign("https://www.youtube.com");
+    },
+  });
 }
-
-checkLocalStorage();

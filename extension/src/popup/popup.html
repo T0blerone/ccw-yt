@@ -9,8 +9,17 @@
   <body>
     <main class="popup">
       <header class="popup__header">
-        <h1 class="popup__title">ccw-yt</h1>
-        <span class="popup__pill" id="status-pill">Locked</span>
+        <div class="popup__brand">
+          <h1 class="popup__title">ccw-yt</h1>
+          <span class="popup__pill" id="status-pill">Locked</span>
+        </div>
+        <button
+          type="button"
+          class="popup__icon-btn"
+          id="open-options"
+          title="Settings"
+          aria-label="Settings"
+        ></button>
       </header>
 
       <section class="popup__panel" id="active-panel" hidden>
@@ -27,15 +36,45 @@
       </section>
 
       <section class="popup__panel" id="locked-panel" hidden>
-        <p class="popup__caption">Start a timed session:</p>
-        <div class="popup__presets" id="preset-grid"></div>
-      </section>
-
-      <footer class="popup__footer">
-        <button type="button" class="popup__link-btn" id="open-options">
-          Settings
+        <div class="popup__stepper">
+          <button
+            type="button"
+            class="popup__step-btn"
+            id="step-minus"
+            aria-label="Decrease by 5 minutes"
+          ></button>
+          <span class="popup__minutes-wrap">
+            <input
+              type="text"
+              inputmode="numeric"
+              class="popup__minutes-input"
+              id="minutes-input"
+              value="20"
+              aria-label="Session duration in minutes"
+            />
+            <span class="popup__minutes-unit">min</span>
+          </span>
+          <button
+            type="button"
+            class="popup__step-btn"
+            id="step-plus"
+            aria-label="Increase by 5 minutes"
+          ></button>
+        </div>
+        <input
+          type="range"
+          class="popup__slider"
+          id="minutes-slider"
+          min="5"
+          max="120"
+          step="5"
+          value="20"
+          aria-label="Duration slider"
+        />
+        <button type="button" class="popup__button popup__button--primary" id="start-session">
+          Start Session
         </button>
-      </footer>
+      </section>
     </main>
     <script type="module" src="./popup.js"></script>
   </body>

@@ -9,6 +9,7 @@
     ext: api,
     MESSAGES: Object.freeze({
       OPEN_OPTIONS: /** @type {const} */ ("CCW_OPEN_OPTIONS"),
+      OPEN_INPAGE_SETTINGS: /** @type {const} */ ("CCW_OPEN_INPAGE_SETTINGS"),
     }),
   });
 

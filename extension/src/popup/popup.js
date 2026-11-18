@@ -1,7 +1,8 @@
 import "../shared/ext.js";
+import "../shared/icons.js";
 import "../shared/state.js";
 
-const { ext, state } = CCW;
+const { ext, MESSAGES, icons, state } = CCW;
 
 const statusPill = document.getElementById("status-pill");
 const activePanel = document.getElementById("active-panel");
@@ -9,37 +10,52 @@ const cooldownPanel = document.getElementById("cooldown-panel");
 const lockedPanel = document.getElementById("locked-panel");
 const remainingDisplay = document.getElementById("remaining-display");
 const cooldownDisplay = document.getElementById("cooldown-display");
-const presetGrid = document.getElementById("preset-grid");
 const endSessionBtn = document.getElementById("end-session");
 const openOptionsBtn = document.getElementById("open-options");
+const stepMinusBtn = document.getElementById("step-minus");
+const stepPlusBtn = document.getElementById("step-plus");
+const minutesInput = /** @type {HTMLInputElement | null} */ (
+  document.getElementById("minutes-input")
+);
+const minutesSlider = /** @type {HTMLInputElement | null} */ (
+  document.getElementById("minutes-slider")
+);
+const startSessionBtn = document.getElementById("start-session");
+
+if (openOptionsBtn) openOptionsBtn.appendChild(icons.create("gear", 18));
+if (stepMinusBtn) stepMinusBtn.appendChild(icons.create("minus", 16));
+if (stepPlusBtn) stepPlusBtn.appendChild(icons.create("plus", 16));
 
 /** @type {CCWStateSnapshot | null} */
 let currentSnapshot = null;
-
-/** @type {string} */
-let renderedPresetsKey = "";
+let selectedMinutes = 20;
+let initializedDefault = false;
 
 /**
- * @param {number[]} presetMinutes
+ * @param {number} mins
  */
-function renderPresets(presetMinutes) {
-  if (!presetGrid) return;
-  const key = presetMinutes.join(",");
-  if (key === renderedPresetsKey) return;
-  renderedPresetsKey = key;
+function setSelectedMinutes(mins) {
+  const clamped = Math.max(1, Math.min(240, Math.round(mins)));
+  selectedMinutes = clamped;
 
-  presetGrid.replaceChildren();
-  for (const mins of presetMinutes) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "popup__preset-btn";
-    btn.textContent = `${mins} min`;
-    btn.addEventListener("click", async () => {
-      const result = await state.startTimedSession(mins * 60);
-      applySnapshot(result.state);
-    });
-    presetGrid.appendChild(btn);
+  if (minutesInput && document.activeElement !== minutesInput) {
+    minutesInput.value = String(clamped);
+    minutesInput.style.width = `${Math.max(1, String(clamped).length)}ch`;
   }
+  if (minutesSlider) {
+    minutesSlider.value = String(Math.max(5, Math.min(120, clamped)));
+  }
+}
+
+/**
+ * @param {-1 | 1} direction
+ */
+function stepByFive(direction) {
+  const next =
+    direction > 0
+      ? Math.floor(selectedMinutes / 5) * 5 + 5
+      : Math.ceil(selectedMinutes / 5) * 5 - 5;
+  setSelectedMinutes(Math.max(5, Math.min(120, next)));
 }
 
 /**
@@ -47,7 +63,10 @@ function renderPresets(presetMinutes) {
  */
 function applySnapshot(snapshot) {
   currentSnapshot = snapshot;
-  renderPresets(snapshot.settings.presetMinutes);
+  if (!initializedDefault) {
+    initializedDefault = true;
+    setSelectedMinutes(snapshot.settings.defaultMinutes);
+  }
   renderTick();
 }
 
@@ -107,6 +126,61 @@ function renderTick() {
   if (lockedPanel) lockedPanel.hidden = false;
 }
 
+if (stepMinusBtn) {
+  stepMinusBtn.addEventListener("click", () => stepByFive(-1));
+}
+if (stepPlusBtn) {
+  stepPlusBtn.addEventListener("click", () => stepByFive(1));
+}
+if (minutesSlider) {
+  minutesSlider.addEventListener("input", () => {
+    setSelectedMinutes(Number(minutesSlider.value));
+  });
+}
+if (minutesInput) {
+  minutesInput.addEventListener("focus", () => {
+    minutesInput.select();
+  });
+  minutesInput.addEventListener("input", () => {
+    const digits = minutesInput.value.replace(/\D+/g, "").slice(0, 3);
+    minutesInput.value = digits;
+    minutesInput.style.width = `${Math.max(1, digits.length)}ch`;
+    if (digits.length > 0) {
+      const parsed = Math.max(1, Math.min(240, Number(digits)));
+      selectedMinutes = parsed;
+      if (minutesSlider) {
+        minutesSlider.value = String(Math.max(5, Math.min(120, parsed)));
+      }
+    }
+  });
+  minutesInput.addEventListener("blur", () => {
+    const parsed = Number(minutesInput.value);
+    setSelectedMinutes(
+      Number.isFinite(parsed) && parsed >= 1
+        ? parsed
+        : currentSnapshot?.settings.defaultMinutes ?? 20
+    );
+  });
+  minutesInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      minutesInput.blur();
+      startSessionBtn?.click();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      minutesInput.value = String(selectedMinutes);
+      minutesInput.blur();
+    }
+  });
+}
+
+if (startSessionBtn) {
+  startSessionBtn.addEventListener("click", async () => {
+    const result = await state.startTimedSession(selectedMinutes * 60);
+    applySnapshot(result.state);
+  });
+}
+
 if (endSessionBtn) {
   endSessionBtn.addEventListener("click", async () => {
     const next = await state.endSession({ reason: "manual" });
@@ -116,6 +190,19 @@ if (endSessionBtn) {
 
 if (openOptionsBtn) {
   openOptionsBtn.addEventListener("click", async () => {
+    try {
+      const tabs = await ext.tabs?.query({ active: true, currentWindow: true });
+      const activeTab = tabs?.[0];
+      if (activeTab?.id != null && activeTab.url) {
+        await ext.tabs?.sendMessage(activeTab.id, {
+          type: MESSAGES.OPEN_INPAGE_SETTINGS,
+        });
+        window.close();
+        return;
+      }
+    } catch {
+      // Fall back to opening the standalone options page
+    }
     await ext.runtime.openOptionsPage();
     window.close();
   });

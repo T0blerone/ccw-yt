@@ -1,0 +1,32 @@
+/* Injected synchronously at `document_start` before `<body>` paints. */
+
+html:not([data-ccw-ready="unlocked"]) {
+  overflow: hidden !important;
+  background-color: #f8f9fb !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-ccw-ready="unlocked"]) {
+    background-color: #0f0f0f !important;
+  }
+}
+
+html[dark]:not([data-ccw-ready="unlocked"]) {
+  background-color: #0f0f0f !important;
+}
+
+html:not([data-ccw-ready="unlocked"]) > body {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* Search-Only landing mode: hide the algorithmic Home feed on `/` */
+html[data-ccw-ready="unlocked"][data-ccw-search-only="true"] ytd-browse[page-subtype="home"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}

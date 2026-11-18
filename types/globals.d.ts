@@ -1,6 +1,11 @@
 /**
- * Ambient declarations for `ccw-yt` shared namespaces and WebExtension APIs.
+ * Ambient declarations for `ccw-yt` shared namespaces.
  */
+
+interface CCWTabInfo {
+  id?: number;
+  url?: string;
+}
 
 interface CCWExtensionAPI {
   storage: {
@@ -24,6 +29,10 @@ interface CCWExtensionAPI {
       ): void;
     };
   };
+  tabs?: {
+    query(queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<CCWTabInfo[]>;
+    sendMessage(tabId: number, message: unknown): Promise<unknown>;
+  };
   runtime: {
     sendMessage(message: unknown): Promise<unknown>;
     openOptionsPage(): Promise<void>;
@@ -42,6 +51,20 @@ interface CCWExtensionAPI {
 
 interface CCWMessages {
   readonly OPEN_OPTIONS: "CCW_OPEN_OPTIONS";
+  readonly OPEN_INPAGE_SETTINGS: "CCW_OPEN_INPAGE_SETTINGS";
+}
+
+type CCWIconName =
+  | "arrow-left"
+  | "clock-counter-clockwise"
+  | "gear"
+  | "magnifying-glass"
+  | "minus"
+  | "play"
+  | "plus";
+
+interface CCWIconsAPI {
+  create(name: CCWIconName, size?: number): SVGSVGElement;
 }
 
 interface CCWSession {
@@ -50,10 +73,16 @@ interface CCWSession {
   durationSec: number;
 }
 
-type CCWLandingTarget = "home" | "subscriptions" | "watch_later" | "history";
+type CCWLandingTarget =
+  | "home"
+  | "subscriptions"
+  | "search_only"
+  | "watch_later"
+  | "library"
+  | "history";
 
 interface CCWSettings {
-  presetMinutes: number[];
+  defaultMinutes: number;
   cooldownMinutes: number;
   defaultLanding: CCWLandingTarget;
 }
@@ -84,7 +113,27 @@ interface CCWStateAPI {
   updateSettings(partial: Partial<CCWSettings>): Promise<CCWSettings>;
   getRemainingSeconds(session: CCWSession | null, now?: number): number;
   formatDuration(totalSeconds: number): string;
+  getLandingPath(landing: CCWLandingTarget): string;
   subscribe(listener: (state: CCWStateSnapshot) => void): () => void;
+}
+
+interface CCWSettingsPanelOptions {
+  backLabel: string;
+  onBack: () => void;
+  onSettingsChanged?: (settings: CCWSettings) => void;
+}
+
+interface CCWSettingsPanelHandle {
+  refresh(settings: CCWSettings): void;
+  destroy(): void;
+}
+
+interface CCWSettingsPanelAPI {
+  readonly STYLES: string;
+  mount(
+    container: HTMLElement,
+    options: CCWSettingsPanelOptions
+  ): CCWSettingsPanelHandle;
 }
 
 type CCWTabMode = "active" | "single_video" | "cooldown" | "locked";
@@ -114,17 +163,38 @@ interface CCWTabAllowanceAPI {
   ): CCWTabResolution;
 }
 
+interface CCWMediaGuardAPI {
+  init(): void;
+  setLocked(locked: boolean): void;
+  isAdPlaying(videoEl?: HTMLMediaElement | null): boolean;
+  isMainVideoEnded(): boolean;
+}
+
+interface CCWEntryGateAPI {
+  init(callbacks: {
+    onStartTimedSession: (minutes: number) => Promise<void>;
+    onGrantSingleVideo: (videoId: string) => void;
+    onSettingsOverlayVisibilityChange?: (open: boolean) => void;
+  }): void;
+  update(resolution: CCWTabResolution): void;
+  openSettings(): void;
+  closeSettings(): void;
+}
+
+interface CCWSearchOnlyAPI {
+  update(active: boolean): void;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
+  icons: CCWIconsAPI;
   state: CCWStateAPI;
-  tabAllowance?: CCWTabAllowanceAPI;
+  settingsPanel: CCWSettingsPanelAPI;
+  tabAllowance: CCWTabAllowanceAPI;
+  mediaGuard: CCWMediaGuardAPI;
+  entryGate: CCWEntryGateAPI;
+  searchOnly: CCWSearchOnlyAPI;
 }
 
 declare var CCW: CCWNamespace;
-
-interface GlobalThis {
-  CCW?: CCWNamespace;
-  browser?: CCWExtensionAPI;
-  chrome?: CCWExtensionAPI;
-}
