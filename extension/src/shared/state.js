@@ -35,6 +35,11 @@
     cooldownMinutes: 0,
     defaultLanding: "home",
     timerVisibility: "always",
+    allowLiveStreams: false,
+    blockOverBudgetWatch: true,
+    exemptSearch: false,
+    exemptChannels: false,
+    exemptPlaylistsAndHistory: false,
   });
 
   /**
@@ -114,11 +119,37 @@
       timerVisibility = /** @type {CCWTimerVisibility} */ (src.timerVisibility);
     }
 
+    const allowLiveStreams =
+      typeof src.allowLiveStreams === "boolean"
+        ? src.allowLiveStreams
+        : DEFAULT_SETTINGS.allowLiveStreams;
+    const blockOverBudgetWatch =
+      typeof src.blockOverBudgetWatch === "boolean"
+        ? src.blockOverBudgetWatch
+        : DEFAULT_SETTINGS.blockOverBudgetWatch;
+    const exemptSearch =
+      typeof src.exemptSearch === "boolean"
+        ? src.exemptSearch
+        : DEFAULT_SETTINGS.exemptSearch;
+    const exemptChannels =
+      typeof src.exemptChannels === "boolean"
+        ? src.exemptChannels
+        : DEFAULT_SETTINGS.exemptChannels;
+    const exemptPlaylistsAndHistory =
+      typeof src.exemptPlaylistsAndHistory === "boolean"
+        ? src.exemptPlaylistsAndHistory
+        : DEFAULT_SETTINGS.exemptPlaylistsAndHistory;
+
     return {
       defaultMinutes,
       cooldownMinutes,
       defaultLanding,
       timerVisibility,
+      allowLiveStreams,
+      blockOverBudgetWatch,
+      exemptSearch,
+      exemptChannels,
+      exemptPlaylistsAndHistory,
     };
   }
 

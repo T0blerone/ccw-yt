@@ -112,6 +112,7 @@
       font-size: 15px;
       font-weight: 500;
       color: var(--fg);
+      cursor: pointer;
     }
 
     .ccw-settings__hint {
@@ -216,6 +217,47 @@
       font-size: 13px;
       color: var(--muted);
       user-select: none;
+    }
+
+    .ccw-switch {
+      appearance: none;
+      position: relative;
+      width: 44px;
+      height: 25px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--input-bg, var(--bg));
+      padding: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+
+    .ccw-switch[aria-checked="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .ccw-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: transform 140ms ease, background 140ms ease;
+    }
+
+    .ccw-switch[aria-checked="true"]::after {
+      transform: translateX(19px);
+      background: #ffffff;
+    }
+
+    .ccw-switch:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
   `;
 
@@ -374,6 +416,68 @@
   }
 
   /**
+   * Builds a clean settings row with an accessible pill switch (`role="switch"`).
+   *
+   * @param {{
+   *   id: string;
+   *   label: string;
+   *   hint: string;
+   *   isFirst?: boolean;
+   *   onToggle: (checked: boolean) => void;
+   * }} cfg
+   */
+  function createToggleRow(cfg) {
+    let checked = false;
+
+    const row = document.createElement("div");
+    row.className = cfg.isFirst
+      ? "ccw-settings__row ccw-settings__row--first"
+      : "ccw-settings__row";
+
+    const labels = document.createElement("div");
+    labels.className = "ccw-settings__label-group";
+
+    const labelEl = document.createElement("label");
+    labelEl.className = "ccw-settings__label";
+    labelEl.htmlFor = cfg.id;
+    labelEl.textContent = cfg.label;
+
+    const hintEl = document.createElement("p");
+    hintEl.className = "ccw-settings__hint";
+    hintEl.textContent = cfg.hint;
+
+    labels.append(labelEl, hintEl);
+
+    const switchBtn = document.createElement("button");
+    switchBtn.type = "button";
+    switchBtn.id = cfg.id;
+    switchBtn.className = "ccw-switch";
+    switchBtn.setAttribute("role", "switch");
+    switchBtn.setAttribute("aria-checked", "false");
+
+    /** @param {boolean} next */
+    function setChecked(next) {
+      checked = Boolean(next);
+      switchBtn.setAttribute("aria-checked", String(checked));
+    }
+
+    function toggle() {
+      const next = !checked;
+      setChecked(next);
+      cfg.onToggle(next);
+    }
+
+    switchBtn.addEventListener("click", toggle);
+    labelEl.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      toggle();
+    });
+
+    row.append(labels, switchBtn);
+    return { element: row, setChecked };
+  }
+
+  /**
    * Mounts the shared Settings UI inside `container`.
    *
    * @param {HTMLElement} container
@@ -415,13 +519,6 @@
 
     header.append(title, subtitle);
 
-    const card = document.createElement("section");
-    card.className = "ccw-settings__card";
-
-    const sectionTitle = document.createElement("h2");
-    sectionTitle.className = "ccw-settings__section-title";
-    sectionTitle.textContent = "Session & Starting Screen";
-
     /** @type {number | undefined} */
     let saveTimer;
 
@@ -432,6 +529,24 @@
         saveStatus.textContent = "";
       }, 1800);
     }
+
+    /**
+     * @param {Partial<CCWSettings>} patch
+     */
+    async function commitPatch(patch) {
+      const updated = await state.updateSettings(patch);
+      refresh(updated);
+      flashSaved();
+      options.onSettingsChanged?.(updated);
+    }
+
+    // --- Card 1: Session & Starting Screen ---
+    const sessionCard = document.createElement("section");
+    sessionCard.className = "ccw-settings__card";
+
+    const sessionSectionTitle = document.createElement("h2");
+    sessionSectionTitle.className = "ccw-settings__section-title";
+    sessionSectionTitle.textContent = "Session & Starting Screen";
 
     // Row 1: Starting screen
     const rowLanding = document.createElement("div");
@@ -491,12 +606,7 @@
       initialValue: 20,
       unit: "min",
       ariaLabel: "default slider duration in minutes",
-      async onCommit(nextVal) {
-        const updated = await state.updateSettings({ defaultMinutes: nextVal });
-        refresh(updated);
-        flashSaved();
-        options.onSettingsChanged?.(updated);
-      },
+      onCommit: (nextVal) => commitPatch({ defaultMinutes: nextVal }),
     });
 
     rowDefaultMins.append(defaultMinsLabels, defaultMinsStepper.element);
@@ -528,12 +638,7 @@
       initialValue: 0,
       unit: "min",
       ariaLabel: "post-session cooldown in minutes",
-      async onCommit(nextVal) {
-        const updated = await state.updateSettings({ cooldownMinutes: nextVal });
-        refresh(updated);
-        flashSaved();
-        options.onSettingsChanged?.(updated);
-      },
+      onCommit: (nextVal) => commitPatch({ cooldownMinutes: nextVal }),
     });
 
     rowCooldown.append(cooldownLabels, cooldownStepper.element);
@@ -569,8 +674,68 @@
 
     rowTimerVis.append(timerVisLabels, timerVisSelect);
 
-    card.append(sectionTitle, rowLanding, rowDefaultMins, rowCooldown, rowTimerVis);
-    root.append(topRow, header, card);
+    sessionCard.append(
+      sessionSectionTitle,
+      rowLanding,
+      rowDefaultMins,
+      rowCooldown,
+      rowTimerVis
+    );
+
+    // --- Card 2: Duration Filtering ---
+    const filterCard = document.createElement("section");
+    filterCard.className = "ccw-settings__card";
+
+    const filterSectionTitle = document.createElement("h2");
+    filterSectionTitle.className = "ccw-settings__section-title";
+    filterSectionTitle.textContent = "Duration Filtering";
+
+    const toggleBlockOverBudget = createToggleRow({
+      id: "ccw-block-over-budget",
+      label: "Block opening videos longer than remaining time",
+      hint: "Pauses playback and shows a calm notice if you open a link to a video that won't fit in your remaining session budget.",
+      isFirst: true,
+      onToggle: (val) => commitPatch({ blockOverBudgetWatch: val }),
+    });
+
+    const toggleAllowLive = createToggleRow({
+      id: "ccw-allow-live",
+      label: "Allow Live streams during active sessions",
+      hint: "Show live broadcasts while time remains (Live streams still lock right at 0:00).",
+      onToggle: (val) => commitPatch({ allowLiveStreams: val }),
+    });
+
+    const toggleExemptSearch = createToggleRow({
+      id: "ccw-exempt-search",
+      label: "Exempt Search results",
+      hint: "Show all video lengths on /results pages regardless of remaining time.",
+      onToggle: (val) => commitPatch({ exemptSearch: val }),
+    });
+
+    const toggleExemptChannels = createToggleRow({
+      id: "ccw-exempt-channels",
+      label: "Exempt Channel pages",
+      hint: "Show all video lengths when browsing a creator's channel page.",
+      onToggle: (val) => commitPatch({ exemptChannels: val }),
+    });
+
+    const toggleExemptPlaylists = createToggleRow({
+      id: "ccw-exempt-playlists",
+      label: "Exempt Playlists & History",
+      hint: "Show all video lengths in Watch Later, playlists, Library, and History.",
+      onToggle: (val) => commitPatch({ exemptPlaylistsAndHistory: val }),
+    });
+
+    filterCard.append(
+      filterSectionTitle,
+      toggleBlockOverBudget.element,
+      toggleAllowLive.element,
+      toggleExemptSearch.element,
+      toggleExemptChannels.element,
+      toggleExemptPlaylists.element
+    );
+
+    root.append(topRow, header, sessionCard, filterCard);
     container.replaceChildren(root);
 
     /**
@@ -581,25 +746,25 @@
       timerVisSelect.value = settings.timerVisibility;
       defaultMinsStepper.setValue(settings.defaultMinutes);
       cooldownStepper.setValue(settings.cooldownMinutes);
+
+      toggleBlockOverBudget.setChecked(settings.blockOverBudgetWatch);
+      toggleAllowLive.setChecked(settings.allowLiveStreams);
+      toggleExemptSearch.setChecked(settings.exemptSearch);
+      toggleExemptChannels.setChecked(settings.exemptChannels);
+      toggleExemptPlaylists.setChecked(settings.exemptPlaylistsAndHistory);
     }
 
-    landingSelect.addEventListener("change", async () => {
-      const updated = await state.updateSettings({
+    landingSelect.addEventListener("change", () =>
+      commitPatch({
         defaultLanding: /** @type {CCWLandingTarget} */ (landingSelect.value),
-      });
-      refresh(updated);
-      flashSaved();
-      options.onSettingsChanged?.(updated);
-    });
+      })
+    );
 
-    timerVisSelect.addEventListener("change", async () => {
-      const updated = await state.updateSettings({
+    timerVisSelect.addEventListener("change", () =>
+      commitPatch({
         timerVisibility: /** @type {CCWTimerVisibility} */ (timerVisSelect.value),
-      });
-      refresh(updated);
-      flashSaved();
-      options.onSettingsChanged?.(updated);
-    });
+      })
+    );
 
     state.getState().then((snap) => refresh(snap.settings));
     const unsubscribe = state.subscribe((snap) => refresh(snap.settings));

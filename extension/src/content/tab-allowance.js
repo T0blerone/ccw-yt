@@ -115,6 +115,7 @@
    * @param {{
    *   wasSessionActiveInTab?: boolean;
    *   isCurrentVideoEnded?: boolean;
+   *   isCurrentVideoLive?: boolean;
    *   urlString?: string;
    *   now?: number;
    * }} [options]
@@ -124,6 +125,7 @@
     const now = options.now ?? Date.now();
     const currentVideoId = getCurrentVideoId(options.urlString);
     const isEnded = Boolean(options.isCurrentVideoEnded);
+    const isLive = Boolean(options.isCurrentVideoLive);
 
     if (state.session && state.remainingSec > 0) {
       lastActiveSession = state.session;
@@ -149,7 +151,7 @@
       const expiredNaturally = now >= lastActiveSession.endsAt;
       lastActiveSession = null;
 
-      if (expiredNaturally && currentVideoId && !isEnded) {
+      if (expiredNaturally && currentVideoId && !isEnded && !isLive) {
         grantSingleVideo(currentVideoId, "overtime");
       } else {
         clearAllowedVideo();
