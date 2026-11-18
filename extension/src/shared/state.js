@@ -5,6 +5,8 @@
   const MISCLICK_GRACE_MS = 10_000;
   const MIN_DURATION_SEC = 10;
   const MAX_DURATION_SEC = 12 * 3600;
+  const MIN_DEFAULT_MINUTES = 1;
+  const MAX_DEFAULT_MINUTES = 240;
   const MAX_COOLDOWN_MINUTES = 240;
 
   const KEYS = Object.freeze({
@@ -14,20 +16,32 @@
     SETTINGS: "settings",
   });
 
-  /** @type {Readonly<Set<CCWLandingTarget>>} */
-  const VALID_LANDINGS = new Set([
-    "home",
-    "subscriptions",
-    "watch_later",
-    "history",
-  ]);
+  /** @type {Readonly<Record<CCWLandingTarget, string>>} */
+  const LANDING_PATHS = Object.freeze({
+    home: "/",
+    subscriptions: "/feed/subscriptions",
+    search_only: "/",
+    watch_later: "/playlist?list=WL",
+    library: "/feed/you",
+    history: "/feed/history",
+  });
 
   /** @type {Readonly<CCWSettings>} */
   const DEFAULT_SETTINGS = Object.freeze({
-    presetMinutes: [15, 30, 45, 60],
+    defaultMinutes: 20,
     cooldownMinutes: 0,
-    defaultLanding: "subscriptions",
+    defaultLanding: "home",
   });
+
+  /**
+   * @param {unknown} value
+   * @returns {number}
+   */
+  function parseTimestamp(value) {
+    return typeof value === "number" && Number.isFinite(value) && value > 0
+      ? value
+      : 0;
+  }
 
   /**
    * @param {unknown} raw
@@ -62,14 +76,12 @@
         ? /** @type {Record<string, unknown>} */ (raw)
         : {};
 
-    let presetMinutes = DEFAULT_SETTINGS.presetMinutes.slice();
-    if (Array.isArray(src.presetMinutes)) {
-      const cleaned = src.presetMinutes
-        .map((n) => (typeof n === "number" ? Math.round(n) : NaN))
-        .filter((n) => Number.isFinite(n) && n >= 1 && n <= 720);
-      if (cleaned.length > 0) {
-        presetMinutes = Array.from(new Set(cleaned)).slice(0, 8);
-      }
+    let defaultMinutes = DEFAULT_SETTINGS.defaultMinutes;
+    if (typeof src.defaultMinutes === "number" && Number.isFinite(src.defaultMinutes)) {
+      defaultMinutes = Math.max(
+        MIN_DEFAULT_MINUTES,
+        Math.min(MAX_DEFAULT_MINUTES, Math.round(src.defaultMinutes))
+      );
     }
 
     let cooldownMinutes = DEFAULT_SETTINGS.cooldownMinutes;
@@ -84,16 +96,24 @@
     let defaultLanding = DEFAULT_SETTINGS.defaultLanding;
     if (
       typeof src.defaultLanding === "string" &&
-      VALID_LANDINGS.has(/** @type {CCWLandingTarget} */ (src.defaultLanding))
+      Object.prototype.hasOwnProperty.call(LANDING_PATHS, src.defaultLanding)
     ) {
       defaultLanding = /** @type {CCWLandingTarget} */ (src.defaultLanding);
     }
 
     return {
-      presetMinutes,
+      defaultMinutes,
       cooldownMinutes,
       defaultLanding,
     };
+  }
+
+  /**
+   * @param {CCWLandingTarget} landing
+   * @returns {string}
+   */
+  function getLandingPath(landing) {
+    return LANDING_PATHS[landing] ?? "/";
   }
 
   /**
@@ -127,9 +147,6 @@
 
   /**
    * Reads local state and lazily normalizes any naturally expired session or cooldown.
-   * When an expired session had a post-session cooldown configured, `cooldownUntil`
-   * is anchored deterministically to `session.endsAt` so multiple tabs never race
-   * and closed-browser expirations expire on schedule.
    *
    * @param {number} [now]
    * @returns {Promise<CCWStateSnapshot>}
@@ -144,11 +161,7 @@
 
     const settings = sanitizeSettings(raw[KEYS.SETTINGS]);
     let session = parseSession(raw[KEYS.SESSION]);
-    let cooldownUntil =
-      typeof raw[KEYS.COOLDOWN_UNTIL] === "number" &&
-      Number.isFinite(raw[KEYS.COOLDOWN_UNTIL])
-        ? raw[KEYS.COOLDOWN_UNTIL]
-        : 0;
+    let cooldownUntil = parseTimestamp(raw[KEYS.COOLDOWN_UNTIL]);
 
     /** @type {Record<string, unknown>} */
     const updates = {};
@@ -255,11 +268,7 @@
 
     const settings = sanitizeSettings(raw[KEYS.SETTINGS]);
     const session = parseSession(raw[KEYS.SESSION]);
-    let cooldownUntil =
-      typeof raw[KEYS.COOLDOWN_UNTIL] === "number" &&
-      Number.isFinite(raw[KEYS.COOLDOWN_UNTIL])
-        ? raw[KEYS.COOLDOWN_UNTIL]
-        : 0;
+    let cooldownUntil = parseTimestamp(raw[KEYS.COOLDOWN_UNTIL]);
 
     if (session) {
       const elapsedMs = now - session.startedAt;
@@ -338,6 +347,7 @@
     updateSettings,
     getRemainingSeconds,
     formatDuration,
+    getLandingPath,
     subscribe,
   });
 })();

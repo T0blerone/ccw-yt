@@ -1,5 +1,5 @@
 /**
- * Ambient declarations for `ccw-yt` shared namespaces and WebExtension APIs.
+ * Ambient declarations for `ccw-yt` shared namespaces.
  */
 
 interface CCWExtensionAPI {
@@ -44,16 +44,35 @@ interface CCWMessages {
   readonly OPEN_OPTIONS: "CCW_OPEN_OPTIONS";
 }
 
+type CCWIconName =
+  | "arrow-left"
+  | "clock-counter-clockwise"
+  | "gear"
+  | "magnifying-glass"
+  | "minus"
+  | "play"
+  | "plus";
+
+interface CCWIconsAPI {
+  create(name: CCWIconName, size?: number): SVGSVGElement;
+}
+
 interface CCWSession {
   startedAt: number;
   endsAt: number;
   durationSec: number;
 }
 
-type CCWLandingTarget = "home" | "subscriptions" | "watch_later" | "history";
+type CCWLandingTarget =
+  | "home"
+  | "subscriptions"
+  | "search_only"
+  | "watch_later"
+  | "library"
+  | "history";
 
 interface CCWSettings {
-  presetMinutes: number[];
+  defaultMinutes: number;
   cooldownMinutes: number;
   defaultLanding: CCWLandingTarget;
 }
@@ -84,6 +103,7 @@ interface CCWStateAPI {
   updateSettings(partial: Partial<CCWSettings>): Promise<CCWSettings>;
   getRemainingSeconds(session: CCWSession | null, now?: number): number;
   formatDuration(totalSeconds: number): string;
+  getLandingPath(landing: CCWLandingTarget): string;
   subscribe(listener: (state: CCWStateSnapshot) => void): () => void;
 }
 
@@ -114,17 +134,35 @@ interface CCWTabAllowanceAPI {
   ): CCWTabResolution;
 }
 
+interface CCWMediaGuardAPI {
+  init(): void;
+  setLocked(locked: boolean): void;
+  isAdPlaying(videoEl?: HTMLMediaElement | null): boolean;
+  isMainVideoEnded(): boolean;
+}
+
+interface CCWEntryGateAPI {
+  init(callbacks: {
+    onStartTimedSession: (minutes: number) => Promise<void>;
+    onGrantSingleVideo: (videoId: string) => void;
+    onOpenOptions: () => void;
+  }): void;
+  update(resolution: CCWTabResolution): void;
+}
+
+interface CCWSearchOnlyAPI {
+  update(active: boolean): void;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
+  icons: CCWIconsAPI;
   state: CCWStateAPI;
-  tabAllowance?: CCWTabAllowanceAPI;
+  tabAllowance: CCWTabAllowanceAPI;
+  mediaGuard?: CCWMediaGuardAPI;
+  entryGate?: CCWEntryGateAPI;
+  searchOnly?: CCWSearchOnlyAPI;
 }
 
 declare var CCW: CCWNamespace;
-
-interface GlobalThis {
-  CCW?: CCWNamespace;
-  browser?: CCWExtensionAPI;
-  chrome?: CCWExtensionAPI;
-}
