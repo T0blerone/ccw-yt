@@ -10,6 +10,8 @@
     entryGate,
     searchOnly,
     hud,
+    feedFilter,
+    watchGuard,
   } = CCW;
 
   if (
@@ -18,7 +20,9 @@
     !mediaGuard ||
     !entryGate ||
     !searchOnly ||
-    !hud
+    !hud ||
+    !feedFilter ||
+    !watchGuard
   ) {
     console.error("[ccw-yt] Missing required content modules.");
     return;
@@ -30,7 +34,6 @@
   let storageCleanPending = false;
   /** @type {string | null} */
   let redirectingToPath = null;
-
   /** @type {CCWSingleVideoOrigin | null} */
   let previousSingleVideoOrigin = null;
 
@@ -108,9 +111,11 @@
 
     const isEnded =
       Boolean(opts.forceVideoEnded) || mediaGuard.isMainVideoEnded();
+    const isLive = mediaGuard.isMainVideoLive();
 
     const resolution = tabAllowance.resolveTabState(live, {
       isCurrentVideoEnded: isEnded,
+      isCurrentVideoLive: isLive,
       urlString,
       now,
     });
@@ -165,6 +170,8 @@
 
       searchOnly.update(showSearchOnly);
       hud.update(resolution);
+      feedFilter.update(resolution);
+      watchGuard.update(resolution);
       entryGate.update(resolution);
     } else {
       if (docEl) {
@@ -173,6 +180,8 @@
       mediaGuard.setLocked(true);
       searchOnly.update(false);
       hud.update(resolution);
+      feedFilter.update(resolution);
+      watchGuard.update(resolution);
       entryGate.update(resolution);
     }
 
@@ -203,6 +212,12 @@
     syncUI();
   }
 
+  async function handleEndSessionNow() {
+    tabAllowance.clearAllowedVideo();
+    const next = await state.endSession({ reason: "manual" });
+    applySnapshot(next);
+  }
+
   entryGate.init({
     async onStartTimedSession(minutes) {
       const result = await state.startTimedSession(minutes * 60);
@@ -226,11 +241,27 @@
     onOpenSettings() {
       entryGate.openSettings();
     },
+    onEndSession: handleEndSessionNow,
+  });
 
-    async onEndSession() {
-      tabAllowance.clearAllowedVideo();
-      const next = await state.endSession({ reason: "manual" });
-      applySnapshot(next);
+  feedFilter.init({
+    onEndSession: handleEndSessionNow,
+  });
+
+  watchGuard.init({
+    onGoBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        const fallback = latestSnapshot
+          ? state.getLandingPath(latestSnapshot.settings.defaultLanding)
+          : "/";
+        window.location.assign(fallback);
+      }
+    },
+
+    onOpenSettings() {
+      entryGate.openSettings();
     },
   });
 
@@ -291,6 +322,7 @@
 
   // SPA navigation & video completion listeners
   window.addEventListener("yt-navigate-start", (ev) => {
+    feedFilter.notifyNavigation();
     const customEv = /** @type {CustomEvent<{ url?: string }>} */ (ev);
     const nextRelUrl = customEv.detail?.url;
     if (typeof nextRelUrl === "string" && nextRelUrl.length > 0) {
@@ -307,11 +339,13 @@
 
   window.addEventListener("yt-navigate-finish", () => {
     lastObservedHref = window.location.href;
+    feedFilter.notifyNavigation();
     syncUI();
   });
 
   window.addEventListener("popstate", () => {
     lastObservedHref = window.location.href;
+    feedFilter.notifyNavigation();
     syncUI();
   });
 
@@ -341,6 +375,7 @@
   window.setInterval(() => {
     if (window.location.href !== lastObservedHref) {
       lastObservedHref = window.location.href;
+      feedFilter.notifyNavigation();
       syncUI();
       return;
     }

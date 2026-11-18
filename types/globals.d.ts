@@ -237,8 +237,8 @@ interface CCWNamespace {
   entryGate: CCWEntryGateAPI;
   searchOnly: CCWSearchOnlyAPI;
   hud: CCWHudAPI;
-  feedFilter?: CCWFeedFilterAPI;
-  watchGuard?: CCWWatchGuardAPI;
+  feedFilter: CCWFeedFilterAPI;
+  watchGuard: CCWWatchGuardAPI;
 }
 
 declare var CCW: CCWNamespace;
