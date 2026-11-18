@@ -109,3 +109,13 @@ html[data-ccw-hide-comments="true"] #comment-teaser,
 html[data-ccw-hide-comments="true"] ytd-watch-metadata #comment-teaser {
   display: none !important;
 }
+
+/* Playback Speed Guard: hide YouTube's "2x >>" Speedmaster pill overlay */
+html[data-ccw-block-hold-2x="true"] .ytp-speedmaster-overlay,
+html[data-ccw-block-hold-2x="true"] .ytp-speedmaster-user-edu,
+html[data-ccw-lock-speed-1x="true"] .ytp-speedmaster-overlay,
+html[data-ccw-lock-speed-1x="true"] .ytp-speedmaster-user-edu {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}

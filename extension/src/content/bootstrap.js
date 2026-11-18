@@ -135,6 +135,8 @@
     const docEl = document.documentElement;
     if (docEl) {
       docEl.dataset.ccwMode = resolution.mode;
+      docEl.dataset.ccwBlockHold2x = String(live.settings.disableHold2x);
+      docEl.dataset.ccwLockSpeed1x = String(live.settings.lockPlayback1x);
     }
 
     // Whenever an active timed session hits bare `/` and Starting Screen has a non-`/` route,
