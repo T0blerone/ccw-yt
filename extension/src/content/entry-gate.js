@@ -25,6 +25,7 @@
     }
 
     .gate {
+      color-scheme: light;
       --bg: #f8f9fb;
       --surface: #ffffff;
       --surface-hover: #eef1f6;
@@ -62,6 +63,7 @@
     }
 
     .gate[data-theme="dark"] {
+      color-scheme: dark;
       --bg: #0f0f0f;
       --surface: #1a1d24;
       --surface-hover: #242933;

@@ -121,33 +121,101 @@
       color: var(--muted);
     }
 
-    .ccw-settings__select,
-    .ccw-settings__number {
+    .ccw-settings__select {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 10px;
+      border-radius: 9px;
+      padding: 8px 12px;
+      min-width: 215px;
       background: var(--input-bg, var(--bg));
       color: var(--fg);
       font-family: inherit;
       font-size: 14px;
       flex-shrink: 0;
-    }
-
-    .ccw-settings__select {
-      min-width: 210px;
       cursor: pointer;
     }
 
-    .ccw-settings__number {
-      width: 92px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .ccw-settings__select:focus,
-    .ccw-settings__number:focus {
+    .ccw-settings__select:focus {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
+    }
+
+    .ccw-stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--input-bg, var(--bg));
+      flex-shrink: 0;
+      transition: border-color 120ms ease;
+    }
+
+    .ccw-stepper:focus-within {
+      border-color: var(--accent);
+    }
+
+    .ccw-stepper__btn {
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+    }
+
+    .ccw-stepper__btn:hover:not(:disabled) {
+      background: var(--surface-hover, var(--surface));
+      color: var(--fg);
+    }
+
+    .ccw-stepper__btn:disabled {
+      opacity: 0.32;
+      cursor: default;
+    }
+
+    .ccw-stepper__btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .ccw-stepper__field {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      min-width: 64px;
+      padding: 0 4px;
+      cursor: text;
+    }
+
+    .ccw-stepper__input {
+      appearance: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      width: 2ch;
+      text-align: right;
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      caret-color: var(--accent);
+    }
+
+    .ccw-stepper__unit {
+      font-size: 13px;
+      color: var(--muted);
+      user-select: none;
     }
   `;
 
@@ -162,7 +230,144 @@
   ];
 
   /**
-   * Mounts the shared Settings UI inside `container` (works in both Shadow DOM and Options page).
+   * Builds a spinnerless `[ − ] 20 min [ + ]` numeric stepper control.
+   *
+   * @param {{
+   *   id: string;
+   *   min: number;
+   *   max: number;
+   *   step: number;
+   *   initialValue: number;
+   *   unit: string;
+   *   ariaLabel: string;
+   *   onCommit: (nextValue: number) => void;
+   * }} cfg
+   */
+  function createNumberStepper(cfg) {
+    let currentValue = cfg.initialValue;
+
+    const wrap = document.createElement("div");
+    wrap.className = "ccw-stepper";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "ccw-stepper__btn";
+    minusBtn.setAttribute("aria-label", `Decrease ${cfg.ariaLabel}`);
+    minusBtn.appendChild(icons.create("minus", 14));
+
+    const fieldLabel = document.createElement("label");
+    fieldLabel.className = "ccw-stepper__field";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.inputMode = "numeric";
+    input.className = "ccw-stepper__input";
+    input.id = cfg.id;
+    input.setAttribute("aria-label", cfg.ariaLabel);
+
+    const unitSpan = document.createElement("span");
+    unitSpan.className = "ccw-stepper__unit";
+    unitSpan.textContent = cfg.unit;
+
+    fieldLabel.append(input, unitSpan);
+
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "ccw-stepper__btn";
+    plusBtn.setAttribute("aria-label", `Increase ${cfg.ariaLabel}`);
+    plusBtn.appendChild(icons.create("plus", 14));
+
+    wrap.append(minusBtn, fieldLabel, plusBtn);
+
+    /**
+     * @param {number} val
+     * @param {boolean} [forceInputSync]
+     */
+    function setValue(val, forceInputSync = false) {
+      const clamped = Math.max(cfg.min, Math.min(cfg.max, Math.round(val)));
+      currentValue = clamped;
+      minusBtn.disabled = clamped <= cfg.min;
+      plusBtn.disabled = clamped >= cfg.max;
+
+      const rootNode = wrap.getRootNode();
+      const activeEl =
+        rootNode instanceof ShadowRoot
+          ? rootNode.activeElement
+          : document.activeElement;
+
+      if (forceInputSync || activeEl !== input) {
+        const text = String(clamped);
+        input.value = text;
+        input.style.width = `${Math.max(1, text.length)}ch`;
+      }
+    }
+
+    /**
+     * @param {-1 | 1} dir
+     */
+    function stepBy(dir) {
+      const next =
+        dir > 0
+          ? Math.floor(currentValue / cfg.step) * cfg.step + cfg.step
+          : Math.ceil(currentValue / cfg.step) * cfg.step - cfg.step;
+      const clamped = Math.max(cfg.min, Math.min(cfg.max, next));
+      setValue(clamped, true);
+      cfg.onCommit(clamped);
+    }
+
+    minusBtn.addEventListener("click", () => stepBy(-1));
+    plusBtn.addEventListener("click", () => stepBy(1));
+
+    input.addEventListener("focus", () => {
+      input.select();
+    });
+
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/\D+/g, "").slice(0, 3);
+      input.value = digits;
+      input.style.width = `${Math.max(1, digits.length)}ch`;
+    });
+
+    function commitTypedValue() {
+      const parsed = Number(input.value);
+      const next =
+        input.value.trim().length > 0 && Number.isFinite(parsed)
+          ? Math.max(cfg.min, Math.min(cfg.max, Math.round(parsed)))
+          : currentValue;
+      const changed = next !== currentValue;
+      setValue(next, true);
+      if (changed) {
+        cfg.onCommit(next);
+      }
+    }
+
+    input.addEventListener("blur", commitTypedValue);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitTypedValue();
+        input.blur();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        stepBy(1);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        stepBy(-1);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setValue(currentValue, true);
+        input.blur();
+      }
+    });
+
+    setValue(cfg.initialValue, true);
+
+    return { element: wrap, setValue };
+  }
+
+  /**
+   * Mounts the shared Settings UI inside `container`.
    *
    * @param {HTMLElement} container
    * @param {CCWSettingsPanelOptions} options
@@ -210,6 +415,17 @@
     sectionTitle.className = "ccw-settings__section-title";
     sectionTitle.textContent = "Session & Starting Screen";
 
+    /** @type {number | undefined} */
+    let saveTimer;
+
+    function flashSaved() {
+      saveStatus.textContent = "Saved locally.";
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        saveStatus.textContent = "";
+      }, 1800);
+    }
+
     // Row 1: Starting screen
     const rowLanding = document.createElement("div");
     rowLanding.className = "ccw-settings__row ccw-settings__row--first";
@@ -251,7 +467,7 @@
     const defaultMinsLabel = document.createElement("label");
     defaultMinsLabel.className = "ccw-settings__label";
     defaultMinsLabel.htmlFor = "ccw-default-minutes";
-    defaultMinsLabel.textContent = "Default slider duration (minutes)";
+    defaultMinsLabel.textContent = "Default slider duration";
 
     const defaultMinsHint = document.createElement("p");
     defaultMinsHint.className = "ccw-settings__hint";
@@ -260,15 +476,23 @@
 
     defaultMinsLabels.append(defaultMinsLabel, defaultMinsHint);
 
-    const defaultMinsInput = document.createElement("input");
-    defaultMinsInput.type = "number";
-    defaultMinsInput.className = "ccw-settings__number";
-    defaultMinsInput.id = "ccw-default-minutes";
-    defaultMinsInput.min = "1";
-    defaultMinsInput.max = "240";
-    defaultMinsInput.step = "5";
+    const defaultMinsStepper = createNumberStepper({
+      id: "ccw-default-minutes",
+      min: 1,
+      max: 240,
+      step: 5,
+      initialValue: 20,
+      unit: "min",
+      ariaLabel: "default slider duration in minutes",
+      async onCommit(nextVal) {
+        const updated = await state.updateSettings({ defaultMinutes: nextVal });
+        refresh(updated);
+        flashSaved();
+        options.onSettingsChanged?.(updated);
+      },
+    });
 
-    rowDefaultMins.append(defaultMinsLabels, defaultMinsInput);
+    rowDefaultMins.append(defaultMinsLabels, defaultMinsStepper.element);
 
     // Row 3: Post-session cooldown
     const rowCooldown = document.createElement("div");
@@ -280,7 +504,7 @@
     const cooldownLabel = document.createElement("label");
     cooldownLabel.className = "ccw-settings__label";
     cooldownLabel.htmlFor = "ccw-cooldown-minutes";
-    cooldownLabel.textContent = "Post-session cooldown (minutes)";
+    cooldownLabel.textContent = "Post-session cooldown";
 
     const cooldownHint = document.createElement("p");
     cooldownHint.className = "ccw-settings__hint";
@@ -289,72 +513,40 @@
 
     cooldownLabels.append(cooldownLabel, cooldownHint);
 
-    const cooldownInput = document.createElement("input");
-    cooldownInput.type = "number";
-    cooldownInput.className = "ccw-settings__number";
-    cooldownInput.id = "ccw-cooldown-minutes";
-    cooldownInput.min = "0";
-    cooldownInput.max = "240";
-    cooldownInput.step = "5";
+    const cooldownStepper = createNumberStepper({
+      id: "ccw-cooldown-minutes",
+      min: 0,
+      max: 240,
+      step: 5,
+      initialValue: 0,
+      unit: "min",
+      ariaLabel: "post-session cooldown in minutes",
+      async onCommit(nextVal) {
+        const updated = await state.updateSettings({ cooldownMinutes: nextVal });
+        refresh(updated);
+        flashSaved();
+        options.onSettingsChanged?.(updated);
+      },
+    });
 
-    rowCooldown.append(cooldownLabels, cooldownInput);
+    rowCooldown.append(cooldownLabels, cooldownStepper.element);
 
     card.append(sectionTitle, rowLanding, rowDefaultMins, rowCooldown);
     root.append(topRow, header, card);
     container.replaceChildren(root);
 
-    /** @type {number | undefined} */
-    let saveTimer;
-
-    function flashSaved() {
-      saveStatus.textContent = "Saved locally.";
-      window.clearTimeout(saveTimer);
-      saveTimer = window.setTimeout(() => {
-        saveStatus.textContent = "";
-      }, 1800);
-    }
-
     /**
      * @param {CCWSettings} settings
      */
     function refresh(settings) {
-      const activeEl =
-        root.getRootNode() instanceof ShadowRoot
-          ? /** @type {ShadowRoot} */ (root.getRootNode()).activeElement
-          : document.activeElement;
-
       landingSelect.value = settings.defaultLanding;
-      if (activeEl !== defaultMinsInput) {
-        defaultMinsInput.value = String(settings.defaultMinutes);
-      }
-      if (activeEl !== cooldownInput) {
-        cooldownInput.value = String(settings.cooldownMinutes);
-      }
+      defaultMinsStepper.setValue(settings.defaultMinutes);
+      cooldownStepper.setValue(settings.cooldownMinutes);
     }
 
     landingSelect.addEventListener("change", async () => {
       const updated = await state.updateSettings({
         defaultLanding: /** @type {CCWLandingTarget} */ (landingSelect.value),
-      });
-      refresh(updated);
-      flashSaved();
-      options.onSettingsChanged?.(updated);
-    });
-
-    defaultMinsInput.addEventListener("change", async () => {
-      const parsed = Number(defaultMinsInput.value);
-      const updated = await state.updateSettings({
-        defaultMinutes: Number.isFinite(parsed) ? parsed : 20,
-      });
-      refresh(updated);
-      flashSaved();
-      options.onSettingsChanged?.(updated);
-    });
-
-    cooldownInput.addEventListener("change", async () => {
-      const parsed = Number(cooldownInput.value);
-      const updated = await state.updateSettings({
-        cooldownMinutes: Number.isFinite(parsed) ? parsed : 0,
       });
       refresh(updated);
       flashSaved();
