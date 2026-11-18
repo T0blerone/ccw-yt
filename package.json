@@ -1,6 +1,6 @@
 {
   "name": "ccw-yt",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Counter-Clockwise mindful session timer and duration-based feed filter for YouTube.",
   "type": "module",
