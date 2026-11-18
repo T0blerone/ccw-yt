@@ -210,7 +210,7 @@ interface CCWNamespace {
   mediaGuard: CCWMediaGuardAPI;
   entryGate: CCWEntryGateAPI;
   searchOnly: CCWSearchOnlyAPI;
-  hud?: CCWHudAPI;
+  hud: CCWHudAPI;
 }
 
 declare var CCW: CCWNamespace;

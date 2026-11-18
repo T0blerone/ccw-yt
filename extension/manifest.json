@@ -63,6 +63,7 @@
         "src/content/media-guard.js",
         "src/content/entry-gate.js",
         "src/content/search-only.js",
+        "src/content/hud.js",
         "src/content/bootstrap.js"
       ],
       "run_at": "document_start"
