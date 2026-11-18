@@ -34,6 +34,23 @@
   }
 
   /**
+   * Returns true if the main `/watch` player is playing a live broadcast.
+   *
+   * @returns {boolean}
+   */
+  function isMainVideoLive() {
+    const video = getMainVideo();
+    if (isAdPlaying(video)) return false;
+    if (document.querySelector("#movie_player .ytp-time-display.ytp-live")) {
+      return true;
+    }
+    if (video && video.readyState >= 1 && !Number.isFinite(video.duration)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Returns true only when the actual content video (not an ad) has finished playing.
    *
    * @returns {boolean}
@@ -135,6 +152,8 @@
     init,
     setLocked,
     isAdPlaying,
+    isMainVideoLive,
     isMainVideoEnded,
+    getMainVideo,
   });
 })();

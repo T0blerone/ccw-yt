@@ -56,7 +56,9 @@ interface CCWMessages {
 
 type CCWIconName =
   | "arrow-left"
+  | "arrows-clockwise"
   | "clock-counter-clockwise"
+  | "funnel-simple"
   | "gear"
   | "lock-simple"
   | "magnifying-glass"
@@ -89,6 +91,11 @@ interface CCWSettings {
   cooldownMinutes: number;
   defaultLanding: CCWLandingTarget;
   timerVisibility: CCWTimerVisibility;
+  allowLiveStreams: boolean;
+  blockOverBudgetWatch: boolean;
+  exemptSearch: boolean;
+  exemptChannels: boolean;
+  exemptPlaylistsAndHistory: boolean;
 }
 
 interface CCWStateSnapshot {
@@ -166,6 +173,7 @@ interface CCWTabAllowanceAPI {
     options?: {
       wasSessionActiveInTab?: boolean;
       isCurrentVideoEnded?: boolean;
+      isCurrentVideoLive?: boolean;
       urlString?: string;
       now?: number;
     }
@@ -176,7 +184,9 @@ interface CCWMediaGuardAPI {
   init(): void;
   setLocked(locked: boolean): void;
   isAdPlaying(videoEl?: HTMLMediaElement | null): boolean;
+  isMainVideoLive(): boolean;
   isMainVideoEnded(): boolean;
+  getMainVideo(): HTMLVideoElement | null;
 }
 
 interface CCWEntryGateAPI {
@@ -202,6 +212,20 @@ interface CCWHudAPI {
   update(resolution: CCWTabResolution): void;
 }
 
+interface CCWFeedFilterAPI {
+  init(callbacks: { onEndSession: () => Promise<void> }): void;
+  update(resolution: CCWTabResolution): void;
+  notifyNavigation(): void;
+}
+
+interface CCWWatchGuardAPI {
+  init(callbacks: {
+    onGoBack: () => void;
+    onOpenSettings: () => void;
+  }): void;
+  update(resolution: CCWTabResolution): void;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
@@ -213,6 +237,8 @@ interface CCWNamespace {
   entryGate: CCWEntryGateAPI;
   searchOnly: CCWSearchOnlyAPI;
   hud: CCWHudAPI;
+  feedFilter?: CCWFeedFilterAPI;
+  watchGuard?: CCWWatchGuardAPI;
 }
 
 declare var CCW: CCWNamespace;
