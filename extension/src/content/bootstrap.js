@@ -13,6 +13,7 @@
     feedFilter,
     watchGuard,
     watchFocus,
+    distractions,
   } = CCW;
 
   if (
@@ -24,7 +25,8 @@
     !hud ||
     !feedFilter ||
     !watchGuard ||
-    !watchFocus
+    !watchFocus ||
+    !distractions
   ) {
     console.error("[ccw-yt] Missing required content modules.");
     return;
@@ -109,6 +111,14 @@
     const urlString = opts.urlOverride ?? window.location.href;
     if (!isBareHomeUrl(urlString)) {
       redirectingToPath = null;
+    }
+
+    // Apply site-wide distraction settings and redirect `/shorts/ID` -> `/watch?v=ID` before unlocking
+    if (distractions.update(live.settings, urlString)) {
+      if (document.documentElement) {
+        delete document.documentElement.dataset.ccwReady;
+      }
+      return;
     }
 
     const isEnded =
@@ -276,6 +286,7 @@
   });
 
   watchFocus.init();
+  distractions.init();
 
   // Allow Toolbar Popup to open the in-page Settings view inside the current YouTube tab
   ext.runtime.onMessage.addListener((message, _sender, sendResponse) => {

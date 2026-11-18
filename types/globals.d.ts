@@ -269,7 +269,7 @@ interface CCWNamespace {
   feedFilter: CCWFeedFilterAPI;
   watchGuard: CCWWatchGuardAPI;
   watchFocus: CCWWatchFocusAPI;
-  distractions?: CCWDistractionsAPI;
+  distractions: CCWDistractionsAPI;
 }
 
 declare var CCW: CCWNamespace;

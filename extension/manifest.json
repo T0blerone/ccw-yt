@@ -78,6 +78,7 @@
         "src/content/feed-filter.js",
         "src/content/watch-guard.js",
         "src/content/watch-focus.js",
+        "src/content/distractions.js",
         "src/content/bootstrap.js"
       ],
       "run_at": "document_start"
