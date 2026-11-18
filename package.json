@@ -1,0 +1,20 @@
+{
+  "name": "ccw-yt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Counter-Clockwise mindful session timer and duration-based feed filter for YouTube.",
+  "type": "module",
+  "scripts": {
+    "start": "web-ext run --source-dir=extension --start-url=https://www.youtube.com",
+    "lint": "web-ext lint --source-dir=extension",
+    "package:amo": "web-ext build --source-dir=extension --artifacts-dir=web-ext-artifacts --overwrite-dest",
+    "build:manifests": "node scripts/build-manifests.mjs",
+    "check": "tsc --project jsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/firefox-webext-browser": "^120.0.1",
+    "typescript": "^5.7.3",
+    "web-ext": "^8.4.0"
+  }
+}
