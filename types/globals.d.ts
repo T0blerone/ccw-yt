@@ -160,9 +160,9 @@ interface CCWNamespace {
   icons: CCWIconsAPI;
   state: CCWStateAPI;
   tabAllowance: CCWTabAllowanceAPI;
-  mediaGuard?: CCWMediaGuardAPI;
-  entryGate?: CCWEntryGateAPI;
-  searchOnly?: CCWSearchOnlyAPI;
+  mediaGuard: CCWMediaGuardAPI;
+  entryGate: CCWEntryGateAPI;
+  searchOnly: CCWSearchOnlyAPI;
 }
 
 declare var CCW: CCWNamespace;
