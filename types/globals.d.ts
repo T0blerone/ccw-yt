@@ -114,6 +114,7 @@ interface CCWStateAPI {
   getState(now?: number): Promise<CCWStateSnapshot>;
   startTimedSession(durationSec: number, now?: number): Promise<CCWStartResult>;
   endSession(options?: { reason?: "manual" | "expired" }, now?: number): Promise<CCWStateSnapshot>;
+  startPostOvertimeCooldown(now?: number): Promise<CCWStateSnapshot>;
   updateSettings(partial: Partial<CCWSettings>): Promise<CCWSettings>;
   getRemainingSeconds(session: CCWSession | null, now?: number): number;
   formatDuration(totalSeconds: number): string;
@@ -151,6 +152,7 @@ interface CCWTabResolution {
   allowedVideoId: string | null;
   singleVideoOrigin: CCWSingleVideoOrigin | null;
   currentVideoId: string | null;
+  isFreshDirectVideoLink: boolean;
   state: CCWStateSnapshot;
 }
 

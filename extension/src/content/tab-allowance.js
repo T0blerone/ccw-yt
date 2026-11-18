@@ -14,6 +14,15 @@
   let lastActiveSession = null;
 
   /**
+   * Tracks the video ID most recently watched/unlocked in this tab so locking
+   * at the end of a video shows the normal Entry Gate instead of offering
+   * "Just Watch This Video" again on the video that just finished.
+   *
+   * @type {string | null}
+   */
+  let lastUnlockedVideoId = initialStored.videoId;
+
+  /**
    * @returns {{ videoId: string | null; origin: CCWSingleVideoOrigin | null }}
    */
   function readSessionStorage() {
@@ -86,6 +95,7 @@
     if (!trimmed) return;
     memoryAllowedVideoId = trimmed;
     memoryOrigin = origin;
+    lastUnlockedVideoId = trimmed;
     writeSessionStorage(trimmed, origin);
   }
 
@@ -117,6 +127,9 @@
 
     if (state.session && state.remainingSec > 0) {
       lastActiveSession = state.session;
+      if (currentVideoId) {
+        lastUnlockedVideoId = currentVideoId;
+      }
       if (memoryAllowedVideoId) {
         clearAllowedVideo();
       }
@@ -127,6 +140,7 @@
         allowedVideoId: null,
         singleVideoOrigin: null,
         currentVideoId,
+        isFreshDirectVideoLink: false,
         state,
       };
     }
@@ -144,6 +158,7 @@
 
     if (memoryAllowedVideoId) {
       if (currentVideoId === memoryAllowedVideoId && !isEnded) {
+        lastUnlockedVideoId = currentVideoId;
         return {
           mode: "single_video",
           remainingSec: 0,
@@ -151,11 +166,21 @@
           allowedVideoId: memoryAllowedVideoId,
           singleVideoOrigin: memoryOrigin ?? "direct",
           currentVideoId,
+          isFreshDirectVideoLink: false,
           state,
         };
       }
       clearAllowedVideo();
     }
+
+    // Clear `lastUnlockedVideoId` if the user navigates off `/watch` so visiting that
+    // video URL fresh later is treated as a fresh incoming link again.
+    if (!currentVideoId) {
+      lastUnlockedVideoId = null;
+    }
+
+    const isFreshDirectVideoLink =
+      Boolean(currentVideoId) && currentVideoId !== lastUnlockedVideoId;
 
     if (state.cooldownRemainingSec > 0) {
       return {
@@ -165,6 +190,7 @@
         allowedVideoId: null,
         singleVideoOrigin: null,
         currentVideoId,
+        isFreshDirectVideoLink,
         state,
       };
     }
@@ -176,6 +202,7 @@
       allowedVideoId: null,
       singleVideoOrigin: null,
       currentVideoId,
+      isFreshDirectVideoLink,
       state,
     };
   }

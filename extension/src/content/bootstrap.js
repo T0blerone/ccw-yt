@@ -31,6 +31,9 @@
   /** @type {string | null} */
   let redirectingToPath = null;
 
+  /** @type {CCWSingleVideoOrigin | null} */
+  let previousSingleVideoOrigin = null;
+
   mediaGuard.init();
 
   /**
@@ -111,6 +114,16 @@
       urlString,
       now,
     });
+
+    const justFinishedOvertime =
+      previousSingleVideoOrigin === "overtime" &&
+      resolution.mode !== "single_video" &&
+      resolution.mode !== "active";
+    previousSingleVideoOrigin = resolution.singleVideoOrigin;
+
+    if (justFinishedOvertime && live.settings.cooldownMinutes > 0) {
+      state.startPostOvertimeCooldown(now).then(applySnapshot);
+    }
 
     const docEl = document.documentElement;
     if (docEl) {

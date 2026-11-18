@@ -324,6 +324,34 @@
   }
 
   /**
+   * Ensures post-session cooldown starts from `now` when an overtime video finishes
+   * (so overtime playback doesn't consume the user's configured break in the background).
+   *
+   * @param {number} [now]
+   * @returns {Promise<CCWStateSnapshot>}
+   */
+  async function startPostOvertimeCooldown(now = Date.now()) {
+    const raw = await ext.storage.local.get([
+      KEYS.COOLDOWN_UNTIL,
+      KEYS.SETTINGS,
+    ]);
+    const settings = sanitizeSettings(raw[KEYS.SETTINGS]);
+    const existing = parseTimestamp(raw[KEYS.COOLDOWN_UNTIL]);
+
+    if (settings.cooldownMinutes > 0) {
+      const targetEnd = now + settings.cooldownMinutes * 60_000;
+      if (targetEnd > existing) {
+        await ext.storage.local.set({
+          [KEYS.SCHEMA_VERSION]: SCHEMA_VERSION,
+          [KEYS.COOLDOWN_UNTIL]: targetEnd,
+        });
+      }
+    }
+
+    return getState(now);
+  }
+
+  /**
    * Merges and persists partial user settings.
    *
    * @param {Partial<CCWSettings>} partial
@@ -373,6 +401,7 @@
     getState,
     startTimedSession,
     endSession,
+    startPostOvertimeCooldown,
     updateSettings,
     getRemainingSeconds,
     formatDuration,
