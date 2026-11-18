@@ -57,6 +57,7 @@ interface CCWMessages {
 type CCWIconName =
   | "arrow-left"
   | "arrows-clockwise"
+  | "chat-circle"
   | "clock-counter-clockwise"
   | "funnel-simple"
   | "gear"
@@ -85,6 +86,7 @@ type CCWLandingTarget =
   | "history";
 
 type CCWTimerVisibility = "always" | "feeds_only" | "hidden";
+type CCWWatchElementMode = "always" | "after_video" | "hidden";
 
 interface CCWSettings {
   defaultMinutes: number;
@@ -96,6 +98,9 @@ interface CCWSettings {
   exemptSearch: boolean;
   exemptChannels: boolean;
   exemptPlaylistsAndHistory: boolean;
+  watchRecsMode: CCWWatchElementMode;
+  commentsMode: CCWWatchElementMode;
+  showEarlyCommentsButton: boolean;
 }
 
 interface CCWStateSnapshot {
@@ -226,6 +231,12 @@ interface CCWWatchGuardAPI {
   update(resolution: CCWTabResolution): void;
 }
 
+interface CCWWatchFocusAPI {
+  init(): void;
+  update(resolution: CCWTabResolution): void;
+  markVideoFinished(videoId: string): void;
+}
+
 interface CCWNamespace {
   ext: CCWExtensionAPI;
   MESSAGES: CCWMessages;
@@ -239,6 +250,7 @@ interface CCWNamespace {
   hud: CCWHudAPI;
   feedFilter: CCWFeedFilterAPI;
   watchGuard: CCWWatchGuardAPI;
+  watchFocus?: CCWWatchFocusAPI;
 }
 
 declare var CCW: CCWNamespace;

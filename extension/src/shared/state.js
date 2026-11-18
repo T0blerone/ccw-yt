@@ -29,6 +29,9 @@
   /** @type {Readonly<Set<CCWTimerVisibility>>} */
   const VALID_TIMER_VISIBILITY = new Set(["always", "feeds_only", "hidden"]);
 
+  /** @type {Readonly<Set<CCWWatchElementMode>>} */
+  const VALID_WATCH_ELEMENT_MODES = new Set(["always", "after_video", "hidden"]);
+
   /** @type {Readonly<CCWSettings>} */
   const DEFAULT_SETTINGS = Object.freeze({
     defaultMinutes: 20,
@@ -40,6 +43,9 @@
     exemptSearch: false,
     exemptChannels: false,
     exemptPlaylistsAndHistory: false,
+    watchRecsMode: "after_video",
+    commentsMode: "after_video",
+    showEarlyCommentsButton: true,
   });
 
   /**
@@ -140,6 +146,29 @@
         ? src.exemptPlaylistsAndHistory
         : DEFAULT_SETTINGS.exemptPlaylistsAndHistory;
 
+    /** @type {CCWWatchElementMode} */
+    let watchRecsMode = DEFAULT_SETTINGS.watchRecsMode;
+    if (
+      typeof src.watchRecsMode === "string" &&
+      VALID_WATCH_ELEMENT_MODES.has(/** @type {CCWWatchElementMode} */ (src.watchRecsMode))
+    ) {
+      watchRecsMode = /** @type {CCWWatchElementMode} */ (src.watchRecsMode);
+    }
+
+    /** @type {CCWWatchElementMode} */
+    let commentsMode = DEFAULT_SETTINGS.commentsMode;
+    if (
+      typeof src.commentsMode === "string" &&
+      VALID_WATCH_ELEMENT_MODES.has(/** @type {CCWWatchElementMode} */ (src.commentsMode))
+    ) {
+      commentsMode = /** @type {CCWWatchElementMode} */ (src.commentsMode);
+    }
+
+    const showEarlyCommentsButton =
+      typeof src.showEarlyCommentsButton === "boolean"
+        ? src.showEarlyCommentsButton
+        : DEFAULT_SETTINGS.showEarlyCommentsButton;
+
     return {
       defaultMinutes,
       cooldownMinutes,
@@ -150,6 +179,9 @@
       exemptSearch,
       exemptChannels,
       exemptPlaylistsAndHistory,
+      watchRecsMode,
+      commentsMode,
+      showEarlyCommentsButton,
     };
   }
 
