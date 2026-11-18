@@ -10,14 +10,32 @@
     <main class="popup">
       <header class="popup__header">
         <h1 class="popup__title">ccw-yt</h1>
-        <span class="popup__badge">v0.1.0</span>
+        <span class="popup__pill" id="status-pill">Locked</span>
       </header>
-      <p class="popup__status" id="session-status">
-        Scaffold ready — session state engine arrives in Step 2.
-      </p>
-      <button type="button" class="popup__button" id="open-options">
-        Settings
-      </button>
+
+      <section class="popup__panel" id="active-panel" hidden>
+        <div class="popup__timer" id="remaining-display">0:00</div>
+        <p class="popup__caption">Remaining wall-clock budget</p>
+        <button type="button" class="popup__button popup__button--danger" id="end-session">
+          End Session Early
+        </button>
+      </section>
+
+      <section class="popup__panel" id="cooldown-panel" hidden>
+        <div class="popup__timer popup__timer--muted" id="cooldown-display">0:00</div>
+        <p class="popup__caption">Post-session cooldown active</p>
+      </section>
+
+      <section class="popup__panel" id="locked-panel" hidden>
+        <p class="popup__caption">Start a timed session:</p>
+        <div class="popup__presets" id="preset-grid"></div>
+      </section>
+
+      <footer class="popup__footer">
+        <button type="button" class="popup__link-btn" id="open-options">
+          Settings
+        </button>
+      </footer>
     </main>
     <script type="module" src="./popup.js"></script>
   </body>
