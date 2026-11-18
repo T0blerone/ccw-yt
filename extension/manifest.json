@@ -53,6 +53,8 @@
       ],
       "js": [
         "src/shared/ext.js",
+        "src/shared/state.js",
+        "src/content/tab-allowance.js",
         "src/content/bootstrap.js"
       ],
       "run_at": "document_start"

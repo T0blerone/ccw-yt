@@ -109,6 +109,7 @@ interface CCWTabAllowanceAPI {
       wasSessionActiveInTab?: boolean;
       isCurrentVideoEnded?: boolean;
       urlString?: string;
+      now?: number;
     }
   ): CCWTabResolution;
 }
