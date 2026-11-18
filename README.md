@@ -30,6 +30,7 @@ Counter-Clockwise mindful session timer, dynamic duration-based feed filter, and
 
 - `extension/` — Self-contained WebExtension directory (Manifest V3, Firefox 128+ ready out of the box).
   - `manifest.json` — Firefox MV3 manifest (`strict_min_version: "128.0"`, `"data_collection_permissions": { "required": ["none"] }`).
+  - `icons/` — Vector master (`icon.svg`) and multi-resolution PNG icons (`16`, `32`, `48`, `96`, `128`).
   - `src/shared/`
     - `ext.js` — Cross-browser `browser ?? chrome` runtime alias & message constants.
     - `icons.js` — Verbatim MIT-licensed `@phosphor-icons/core` SVG helper.
