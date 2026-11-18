@@ -71,8 +71,17 @@ html[data-ccw-center-watch="true"] ytd-watch-flexy[is-two-columns_]:not([theater
   justify-content: center !important;
 }
 
-/* Watch Page Focus: hide comments section and top-comment teaser */
-html[data-ccw-hide-comments="true"] ytd-comments#comments,
+/* Watch Page Focus: collapse comments to 0px without breaking YouTube's IntersectionObserver */
+html[data-ccw-hide-comments="true"] ytd-comments#comments {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
 html[data-ccw-hide-comments="true"] #comment-teaser,
 html[data-ccw-hide-comments="true"] ytd-watch-metadata #comment-teaser {
   display: none !important;

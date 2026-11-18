@@ -116,9 +116,15 @@
   }
 
   function wakeLazyObservers() {
-    window.dispatchEvent(new Event("resize"));
-    window.scrollBy(0, 1);
-    window.scrollBy(0, -1);
+    const nudge = () => {
+      window.dispatchEvent(new Event("resize"));
+      window.dispatchEvent(new Event("scroll"));
+      window.scrollBy(0, 1);
+      window.scrollBy(0, -1);
+    };
+    nudge();
+    window.requestAnimationFrame(nudge);
+    window.setTimeout(nudge, 80);
   }
 
   function ensureEarlyButtonMounted() {
@@ -233,6 +239,7 @@
     } else {
       delete docEl.dataset.ccwHideWatchRecs;
       if (prevHideRecs) {
+        feedFilter.notifyNavigation();
         feedFilter.update(latestResolution);
         wakeLazyObservers();
       }

@@ -622,15 +622,52 @@
   }
 
   /**
+   * Returns video-feed continuation spinners, strictly excluding comment threads
+   * and engagement panels (Transcript, Chapters, Live Chat).
+   *
+   * @returns {Element[]}
+   */
+  function getFeedContinuations() {
+    const all = document.querySelectorAll("ytd-continuation-item-renderer");
+    /** @type {Element[]} */
+    const feedOnly = [];
+    for (const el of all) {
+      if (
+        el.closest(
+          "ytd-comments, #comments, ytd-engagement-panel-section-list-renderer"
+        )
+      ) {
+        el.removeAttribute("data-ccw-pause-continuation");
+        continue;
+      }
+      feedOnly.push(el);
+    }
+    return feedOnly;
+  }
+
+  /**
    * @param {number} visibleCount
    * @param {number} hiddenCount
    * @param {CCWTabResolution} resolution
    */
   function manageStarvationAndContinuations(visibleCount, hiddenCount, resolution) {
     const totalResolved = visibleCount + hiddenCount;
-    const continuations = Array.from(
-      document.querySelectorAll("ytd-continuation-item-renderer")
-    );
+    const continuations = getFeedContinuations();
+    const isWatchPage = window.location.pathname === "/watch";
+
+    // While watch-page recommendations are hidden by Watch Page Focus, don't prematurely
+    // lock `#related`'s initial continuation loader before it has a chance to reveal.
+    if (
+      isWatchPage &&
+      document.documentElement?.dataset.ccwHideWatchRecs === "true" &&
+      resolution.mode === "active"
+    ) {
+      for (const c of continuations) {
+        c.removeAttribute("data-ccw-pause-continuation");
+      }
+      hideFooter();
+      return;
+    }
 
     if (hiddenCount === 0 || resolution.mode === "single_video") {
       // In single_video mode on `/watch`, pause `#related` continuations so sidebar doesn't infinite-fetch
@@ -644,6 +681,14 @@
         }
       }
       hideFooter();
+      return;
+    }
+
+    // On `/watch`, let `#related` finish populating its initial ~18–20 item sidebar batch first
+    if (isWatchPage && totalResolved < 16) {
+      for (const c of continuations) {
+        c.removeAttribute("data-ccw-pause-continuation");
+      }
       return;
     }
 
