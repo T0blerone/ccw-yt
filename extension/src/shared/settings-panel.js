@@ -229,6 +229,13 @@
     { value: "history", label: "History" },
   ];
 
+  /** @type {ReadonlyArray<{ value: CCWTimerVisibility; label: string }>} */
+  const TIMER_VISIBILITY_OPTIONS = [
+    { value: "always", label: "Always (except fullscreen)" },
+    { value: "feeds_only", label: "Feeds only (hide on video pages)" },
+    { value: "hidden", label: "Hidden" },
+  ];
+
   /**
    * Builds a spinnerless `[ − ] 20 min [ + ]` numeric stepper control.
    *
@@ -531,7 +538,38 @@
 
     rowCooldown.append(cooldownLabels, cooldownStepper.element);
 
-    card.append(sectionTitle, rowLanding, rowDefaultMins, rowCooldown);
+    // Row 4: Top-bar timer pill visibility
+    const rowTimerVis = document.createElement("div");
+    rowTimerVis.className = "ccw-settings__row";
+
+    const timerVisLabels = document.createElement("div");
+    timerVisLabels.className = "ccw-settings__label-group";
+
+    const timerVisLabel = document.createElement("label");
+    timerVisLabel.className = "ccw-settings__label";
+    timerVisLabel.htmlFor = "ccw-timer-visibility";
+    timerVisLabel.textContent = "Timer pill visibility";
+
+    const timerVisHint = document.createElement("p");
+    timerVisHint.className = "ccw-settings__hint";
+    timerVisHint.textContent =
+      "Show remaining time in YouTube's top bar (always hidden in fullscreen).";
+
+    timerVisLabels.append(timerVisLabel, timerVisHint);
+
+    const timerVisSelect = document.createElement("select");
+    timerVisSelect.className = "ccw-settings__select";
+    timerVisSelect.id = "ccw-timer-visibility";
+    for (const opt of TIMER_VISIBILITY_OPTIONS) {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      timerVisSelect.appendChild(optionEl);
+    }
+
+    rowTimerVis.append(timerVisLabels, timerVisSelect);
+
+    card.append(sectionTitle, rowLanding, rowDefaultMins, rowCooldown, rowTimerVis);
     root.append(topRow, header, card);
     container.replaceChildren(root);
 
@@ -540,6 +578,7 @@
      */
     function refresh(settings) {
       landingSelect.value = settings.defaultLanding;
+      timerVisSelect.value = settings.timerVisibility;
       defaultMinsStepper.setValue(settings.defaultMinutes);
       cooldownStepper.setValue(settings.cooldownMinutes);
     }
@@ -547,6 +586,15 @@
     landingSelect.addEventListener("change", async () => {
       const updated = await state.updateSettings({
         defaultLanding: /** @type {CCWLandingTarget} */ (landingSelect.value),
+      });
+      refresh(updated);
+      flashSaved();
+      options.onSettingsChanged?.(updated);
+    });
+
+    timerVisSelect.addEventListener("change", async () => {
+      const updated = await state.updateSettings({
+        timerVisibility: /** @type {CCWTimerVisibility} */ (timerVisSelect.value),
       });
       refresh(updated);
       flashSaved();
